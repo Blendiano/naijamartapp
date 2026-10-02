@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { sendWelcomeEmail } from "@/lib/email/mailer";
+import { getFirstUnmetRule, PASSWORD_RULE_MESSAGES } from "@/lib/auth/password-rules";
 
 const signupSchema = z
   .object({
@@ -16,7 +17,18 @@ const signupSchema = z
         "Enter both first and last name separated by a space"
       ),
     email: z.string().email("Please enter a valid email address"),
-    password: z.string().min(6, "Password must be at least 6 characters"),
+    password: z
+      .string()
+      .min(1, "This field cannot be empty")
+      .superRefine((value, ctx) => {
+        const unmet = getFirstUnmetRule(value);
+        if (unmet) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: PASSWORD_RULE_MESSAGES[unmet.id],
+          });
+        }
+      }),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {

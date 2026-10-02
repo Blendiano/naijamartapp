@@ -9,8 +9,13 @@ import { z } from "zod";
 import { signIn } from "next-auth/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { authFormStyles } from "@/components/auth/auth-styles";
+import {
+  getFirstUnmetRule,
+  PASSWORD_RULE_MESSAGES,
+} from "@/lib/auth/password-rules";
+import { PasswordRequirements } from "@/components/auth/password-requirements";
 
 const signupSchema = z
   .object({
@@ -29,7 +34,15 @@ const signupSchema = z
     password: z
       .string()
       .min(1, "This field cannot be empty")
-      .min(6, "Password must be at least 6 characters"),
+      .superRefine((value, ctx) => {
+        const unmet = getFirstUnmetRule(value);
+        if (unmet) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: PASSWORD_RULE_MESSAGES[unmet.id],
+          });
+        }
+      }),
     confirmPassword: z.string().min(1, "This field cannot be empty"),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -42,6 +55,11 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 export function SignupForm() {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
+
+  const [passwordValue, setPasswordValue] = useState("");
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
 
   const {
     register,
@@ -135,14 +153,41 @@ export function SignupForm() {
         <label htmlFor="password" className={authFormStyles.label}>
           Enter password
         </label>
-        <input
-          id="password"
-          type="password"
-          autoComplete="new-password"
-          placeholder="At least 6 characters"
-          className={authFormStyles.input}
-          {...register("password")}
-        />
+        <div className={authFormStyles.inputWrap}>
+          <input
+            id="password"
+            type={passwordVisible ? "text" : "password"}
+            autoComplete="new-password"
+            placeholder="Create a strong password"
+            aria-describedby="password-requirements"
+            className={authFormStyles.inputWithToggle}
+            {...register("password", {
+              onChange: (event) => setPasswordValue(event.target.value),
+              onBlur: () => setPasswordFocused(false),
+            })}
+            onFocus={() => setPasswordFocused(true)}
+          />
+          <button
+            type="button"
+            onClick={() => setPasswordVisible((prev) => !prev)}
+            className={authFormStyles.toggle}
+            aria-label={passwordVisible ? "Hide password" : "Show password"}
+            aria-pressed={passwordVisible}
+            tabIndex={-1}
+          >
+            {passwordVisible ? (
+              <EyeOff className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Eye className="h-4 w-4" aria-hidden="true" />
+            )}
+          </button>
+        </div>
+        <div id="password-requirements">
+          <PasswordRequirements
+            value={passwordValue}
+            focused={passwordFocused}
+          />
+        </div>
         {errors.password?.message && (
           <p className={authFormStyles.error} role="alert">
             {errors.password.message}
@@ -154,14 +199,34 @@ export function SignupForm() {
         <label htmlFor="confirmPassword" className={authFormStyles.label}>
           Confirm password
         </label>
-        <input
-          id="confirmPassword"
-          type="password"
-          autoComplete="new-password"
-          placeholder="Re-enter your password"
-          className={authFormStyles.input}
-          {...register("confirmPassword")}
-        />
+        <div className={authFormStyles.inputWrap}>
+          <input
+            id="confirmPassword"
+            type={confirmPasswordVisible ? "text" : "password"}
+            autoComplete="new-password"
+            placeholder="Re-enter your password"
+            className={authFormStyles.inputWithToggle}
+            {...register("confirmPassword")}
+          />
+          <button
+            type="button"
+            onClick={() => setConfirmPasswordVisible((prev) => !prev)}
+            className={authFormStyles.toggle}
+            aria-label={
+              confirmPasswordVisible
+                ? "Hide password confirmation"
+                : "Show password confirmation"
+            }
+            aria-pressed={confirmPasswordVisible}
+            tabIndex={-1}
+          >
+            {confirmPasswordVisible ? (
+              <EyeOff className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Eye className="h-4 w-4" aria-hidden="true" />
+            )}
+          </button>
+        </div>
         {errors.confirmPassword?.message && (
           <p className={authFormStyles.error} role="alert">
             {errors.confirmPassword.message}
