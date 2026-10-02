@@ -1,26 +1,423 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* NaijaMart Design System Tokens */
+/* Canonical source: Tokens/Design system Tokens -> generated Tokens/styles/tokens.css */
+/* shadcn/ui role tokens below alias the same --sys-* tokens (single source of truth). */
+
+/* ====================================================
+   LIGHT THEME (default)
+   ==================================================== */
+/* ====================================================
+   LIGHT THEME (default)
+   ------------------------------------------------------------
+   :root is always applied so light is guaranteed even if the
+   dormant dark block is re-enabled without a matching light rule.
+   ==================================================== */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* ── Sys color tokens (from generated tokens.css) ── */
+  --sys-color-primary:                    hsl(175, 51%, 19%);
+  --sys-color-on-primary:                 hsl(0, 0%, 100%);
+  --sys-color-primary-container:          hsl(173, 34%, 72%);
+  --sys-color-on-primary-container:       hsl(175, 44%, 21%);
+  --sys-color-secondary:                  hsl(163, 19%, 33%);
+  --sys-color-on-secondary:               hsl(0, 0%, 100%);
+  --sys-color-secondary-container:        hsl(163, 26%, 74%);
+  --sys-color-on-secondary-container:     hsl(165, 26%, 24%);
+  --sys-color-tertiary:                   hsl(39, 30%, 33%);
+  --sys-color-on-tertiary:                hsl(0, 0%, 100%);
+  --sys-color-tertiary-container:         hsl(37, 47%, 74%);
+  --sys-color-on-tertiary-container:      hsl(38, 38%, 24%);
+  --sys-color-error:                      hsl(4, 65%, 43%);
+  --sys-color-on-error:                   hsl(0, 0%, 100%);
+  --sys-color-error-container:            hsl(4, 65%, 43%);
+  --sys-color-on-error-container:         hsl(0, 0%, 100%);
+  --sys-color-inverse-primary:            hsl(173, 34%, 72%);
+
+  --sys-color-background:                 hsl(43, 47%, 97%);
+  --sys-color-on-background:              hsl(80, 6%, 10%);
+  --sys-color-surface:                    hsl(43, 47%, 97%);
+  --sys-color-on-surface:                 hsl(80, 6%, 10%);
+  --sys-color-surface-variant:            hsl(40, 19%, 88%);
+  --sys-color-on-surface-variant:         hsl(51, 5%, 27%);
+  --sys-color-outline:                    hsl(47, 4%, 46%);
+  --sys-color-outline-variant:            hsl(40, 10%, 77%);
+  --sys-color-inverse-surface:            hsl(80, 3%, 19%);
+  --sys-color-inverse-on-surface:         hsl(50, 19%, 94%);
+  --sys-color-surface-dim:                hsl(50, 8%, 85%);
+  --sys-color-surface-bright:             hsl(43, 47%, 97%);
+  --sys-color-surface-container-lowest:   hsl(0, 0%, 100%);
+  --sys-color-surface-container-low:      hsl(43, 26%, 95%);
+  --sys-color-surface-container:          hsl(43, 19%, 93%);
+  --sys-color-surface-container-high:     hsl(43, 14%, 90%);
+  --sys-color-surface-container-highest:  hsl(43, 11%, 88%);
+  --sys-color-success:                    hsl(152, 55%, 34%);
+  --sys-color-on-success:                 hsl(0, 0%, 100%);
+  --sys-color-warning:                    hsl(38, 92%, 45%);
+  --sys-color-on-warning:                 hsl(45, 100%, 8%);
+  --sys-color-info:                       hsl(202, 70%, 39%);
+  --sys-color-on-info:                    hsl(0, 0%, 100%);
+
+  /* ── shadcn/ui role aliases (resolve per-theme via the sys tokens) ── */
+  --primary:            var(--sys-color-primary);
+  --primary-foreground: var(--sys-color-on-primary);
+  --secondary:          var(--sys-color-secondary);
+  --secondary-foreground: var(--sys-color-on-secondary);
+  --accent:             var(--sys-color-tertiary);
+  --accent-foreground:  var(--sys-color-on-tertiary);
+
+  --background:       var(--sys-color-background);
+  --foreground:       var(--sys-color-on-background);
+  --card:             var(--sys-color-surface-container-lowest);
+  --card-foreground:  var(--sys-color-on-surface);
+  --popover:          var(--sys-color-surface-container-lowest);
+  --popover-foreground: var(--sys-color-on-surface);
+  --muted:            var(--sys-color-surface-variant);
+  --muted-foreground: var(--sys-color-on-surface-variant);
+  --border:           var(--sys-color-outline-variant);
+  --input:            var(--sys-color-outline-variant);
+  --ring:             var(--sys-color-primary);
+  --surface-dim:      var(--sys-color-surface-dim);
+  --surface-container-highest: var(--sys-color-surface-container-highest);
+
+  --destructive:            var(--sys-color-error);
+  --destructive-foreground: var(--sys-color-on-error);
+  --success:                var(--sys-color-success);
+  --success-foreground:     var(--sys-color-on-success);
+  --warning:                var(--sys-color-warning);
+  --warning-foreground:     var(--sys-color-on-warning);
+  --info:                   var(--sys-color-info);
+  --info-foreground:        var(--sys-color-on-info);
+
+  /* Radius */
+  --radius: 0.5rem;
+
+  /* Sidebar */
+  --sidebar:                    var(--sys-color-background);
+  --sidebar-foreground:         var(--sys-color-on-background);
+  --sidebar-primary:            var(--sys-color-primary);
+  --sidebar-primary-foreground: var(--sys-color-on-primary);
+  --sidebar-accent:             var(--sys-color-surface-variant);
+  --sidebar-accent-foreground:  var(--sys-color-on-surface);
+  --sidebar-border:             var(--sys-color-outline-variant);
+  --sidebar-ring:               var(--sys-color-primary);
+
+  /* ── Sys static tokens (typography / spacing / radius / shadows / elevation) ── */
+  --sys-font-family-sans:    "Plus Jakarta Sans", system-ui, sans-serif;
+  --sys-font-family-display: "Plus Jakarta Sans", system-ui, sans-serif;
+  --sys-font-family-mono:    "IBM Plex Mono", ui-monospace, monospace;
+
+  --sys-font-size-xs:   0.75rem;
+  --sys-font-size-sm:   0.875rem;
+  --sys-font-size-base: 1rem;
+  --sys-font-size-lg:   1.125rem;
+  --sys-font-size-xl:   1.25rem;
+  --sys-font-size-2xl:  1.5rem;
+  --sys-font-size-3xl:  1.875rem;
+  --sys-font-size-4xl:  2.25rem;
+  --sys-font-size-5xl:  3rem;
+  --sys-font-size-6xl:  3.75rem;
+  --sys-font-size-7xl:  4.5rem;
+
+  --sys-font-weight-light: 300;
+  --sys-font-weight-regular: 400;
+  --sys-font-weight-medium: 500;
+  --sys-font-weight-semibold: 600;
+  --sys-font-weight-bold: 700;
+  --sys-font-weight-extrabold: 800;
+
+  --sys-line-height-none: 1;
+  --sys-line-height-tight: 1.25;
+  --sys-line-height-snug: 1.375;
+  --sys-line-height-normal: 1.5;
+  --sys-line-height-relaxed: 1.625;
+  --sys-line-height-loose: 2;
+
+  --sys-letter-spacing-tighter: -0.05em;
+  --sys-letter-spacing-tight: -0.025em;
+  --sys-letter-spacing-normal: 0em;
+  --sys-letter-spacing-wide: 0.025em;
+  --sys-letter-spacing-wider: 0.05em;
+  --sys-letter-spacing-widest: 0.1em;
+
+  --sys-spacing-0: 0;
+  --sys-spacing-1: 0.25rem;
+  --sys-spacing-2: 0.5rem;
+  --sys-spacing-3: 0.75rem;
+  --sys-spacing-4: 1rem;
+  --sys-spacing-5: 1.25rem;
+  --sys-spacing-6: 1.5rem;
+  --sys-spacing-7: 1.75rem;
+  --sys-spacing-8: 2rem;
+  --sys-spacing-9: 2.25rem;
+  --sys-spacing-10: 2.5rem;
+  --sys-spacing-11: 2.75rem;
+  --sys-spacing-12: 3rem;
+  --sys-spacing-14: 3.5rem;
+  --sys-spacing-16: 4rem;
+  --sys-spacing-20: 5rem;
+  --sys-spacing-24: 6rem;
+  --sys-spacing-28: 7rem;
+  --sys-spacing-32: 8rem;
+  --sys-spacing-36: 9rem;
+  --sys-spacing-40: 10rem;
+  --sys-spacing-44: 11rem;
+  --sys-spacing-48: 12rem;
+  --sys-spacing-52: 13rem;
+  --sys-spacing-56: 14rem;
+  --sys-spacing-60: 15rem;
+  --sys-spacing-64: 16rem;
+  --sys-spacing-72: 18rem;
+  --sys-spacing-80: 20rem;
+  --sys-spacing-96: 24rem;
+  --sys-spacing-px: 1px;
+  --sys-spacing-0-5: 0.125rem;
+  --sys-spacing-1-5: 0.375rem;
+  --sys-spacing-2-5: 0.625rem;
+  --sys-spacing-3-5: 0.875rem;
+
+  --sys-radius-none: 0;
+  --sys-radius-xs: 0.125rem;
+  --sys-radius-sm: 0.25rem;
+  --sys-radius-md: 0.5rem;
+  --sys-radius-lg: 0.75rem;
+  --sys-radius-xl: 1rem;
+  --sys-radius-2xl: 1.5rem;
+  --sys-radius-3xl: 2rem;
+  --sys-radius-full: 9999px;
+
+  --sys-shadow-xs:  0 1px 2px rgba(0,0,0,0.05);
+  --sys-shadow-sm:  0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --sys-shadow-md:  0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
+  --sys-shadow-lg:  0 10px 15px rgba(0,0,0,0.08), 0 4px 6px rgba(0,0,0,0.03);
+  --sys-shadow-xl:  0 20px 25px rgba(0,0,0,0.10), 0 8px 10px rgba(0,0,0,0.04);
+  --sys-shadow-2xl: 0 25px 50px rgba(0,0,0,0.15);
+  --sys-shadow-inner: inset 0 2px 4px rgba(0,0,0,0.05);
+  --sys-shadow-glow-primary:   0 0 20px hsla(175, 51%, 30%, 0.35);
+  --sys-shadow-glow-secondary: 0 0 20px hsla(164, 13%, 50%, 0.35);
+  --sys-shadow-glow-tertiary:  0 0 20px hsla(38, 39%, 60%, 0.35);
+  --sys-shadow-glow-error:     0 0 20px hsla(4, 71%, 50%, 0.35);
+
+  --sys-elevation-0: none;
+  --sys-elevation-1: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --sys-elevation-2: 0 3px 6px rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.06);
+  --sys-elevation-3: 0 6px 12px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.06);
+  --sys-elevation-4: 0 10px 20px rgba(0,0,0,0.12), 0 3px 6px rgba(0,0,0,0.06);
+  --sys-elevation-5: 0 15px 30px rgba(0,0,0,0.14), 0 5px 10px rgba(0,0,0,0.08);
 }
 
+/* ====================================================
+   DARK THEME (dormant — not wired up yet)
+   ------------------------------------------------------------
+   The selector below is intentionally non-matching so this block
+   never applies. Dark mode is not finished: the dark primary is too
+   dark against dark on-primary, so the submit button has poor
+   contrast.
+
+   To re-enable: change the selector back to [data-theme="dark"].
+   All values below are already defined and need no other change.
+   ==================================================== */
+[data-theme="dark-DORMANT"] {
+  color-scheme: dark;
+
+  /* ── Sys color tokens (dark) ── */
+  --sys-color-primary:                    hsl(175, 51%, 19%);
+  --sys-color-on-primary:                 hsl(177, 100%, 11%);
+  --sys-color-primary-container:          hsl(175, 44%, 21%);
+  --sys-color-on-primary-container:       hsl(173, 56%, 83%);
+  --sys-color-secondary:                  hsl(163, 26%, 74%);
+  --sys-color-on-secondary:               hsl(167, 42%, 15%);
+  --sys-color-secondary-container:        hsl(165, 26%, 24%);
+  --sys-color-on-secondary-container:     hsl(161, 45%, 85%);
+  --sys-color-tertiary:                   hsl(37, 47%, 74%);
+  --sys-color-on-tertiary:                hsl(40, 54%, 15%);
+  --sys-color-tertiary-container:         hsl(38, 38%, 24%);
+  --sys-color-on-tertiary-container:      hsl(37, 83%, 84%);
+  --sys-color-error:                      hsl(4, 65%, 43%);
+  --sys-color-on-error:                   hsl(0, 0%, 100%);
+  --sys-color-error-container:            hsl(4, 65%, 43%);
+  --sys-color-on-error-container:         hsl(0, 0%, 100%);
+  --sys-color-inverse-primary:            hsl(175, 29%, 31%);
+
+  --sys-color-background:                 hsl(80, 7%, 8%);
+  --sys-color-on-background:              hsl(43, 11%, 88%);
+  --sys-color-surface:                    hsl(75, 6%, 12%);
+  --sys-color-on-surface:                 hsl(43, 11%, 88%);
+  --sys-color-surface-variant:            hsl(51, 5%, 27%);
+  --sys-color-on-surface-variant:         hsl(40, 10%, 77%);
+  --sys-color-outline:                    hsl(42, 4%, 56%);
+  --sys-color-outline-variant:            hsl(51, 5%, 27%);
+  --sys-color-inverse-surface:            hsl(43, 11%, 88%);
+  --sys-color-inverse-on-surface:         hsl(80, 3%, 19%);
+  --sys-color-surface-dim:                hsl(80, 7%, 8%);
+  --sys-color-surface-bright:             hsl(70, 6%, 16%);
+  --sys-color-surface-container-lowest:   hsl(80, 8%, 6%);
+  --sys-color-surface-container-low:      hsl(80, 6%, 10%);
+  --sys-color-surface-container:          hsl(75, 5%, 14%);
+  --sys-color-surface-container-high:     hsl(70, 5%, 17%);
+  --sys-color-surface-container-highest:  hsl(65, 6%, 21%);
+  --sys-color-success:                    hsl(152, 55%, 50%);
+  --sys-color-on-success:                 hsl(152, 55%, 12%);
+  --sys-color-warning:                    hsl(38, 92%, 55%);
+  --sys-color-on-warning:                 hsl(38, 90%, 12%);
+  --sys-color-info:                       hsl(202, 70%, 60%);
+  --sys-color-on-info:                    hsl(202, 90%, 12%);
+
+  /* ── shadcn/ui role aliases (dark surfaces) ── */
+  --card:             var(--sys-color-surface-container-low);
+  --card-foreground:  var(--sys-color-on-surface);
+  --popover:          var(--sys-color-surface-container-low);
+  --popover-foreground: var(--sys-color-on-surface);
+  --sidebar:          var(--sys-color-surface-container-low);
+
+  /* Everything else resolves via the light-theme aliases above, which
+     pick up these overridden --sys-* values through the cascade. */
+}
+
+/* ====================================================
+   TAILWIND THEME MAPPING
+   ==================================================== */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background:         var(--background);
+  --color-foreground:         var(--foreground);
+  --color-card:               var(--card);
+  --color-card-foreground:    var(--card-foreground);
+  --color-popover:            var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary:            var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary:          var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted:              var(--muted);
+  --color-muted-foreground:   var(--muted-foreground);
+  --color-accent:             var(--accent);
+  --color-accent-foreground:  var(--accent-foreground);
+  --color-destructive:        var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border:             var(--border);
+  --color-input:            var(--input);
+  --color-ring:             var(--ring);
+  --color-surface-dim:      var(--surface-dim);
+  --color-surface:         var(--sys-color-surface);
+  --color-surface-variant:  var(--sys-color-surface-variant);
+  --color-on-surface-variant: var(--sys-color-on-surface-variant);
+  --color-outline:          var(--sys-color-outline);
+  --color-surface-container-highest: var(--surface-container-highest);
+  --color-surface-container-lowest:  var(--sys-color-surface-container-lowest);
+  --color-success:            var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning:            var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info:               var(--info);
+  --color-info-foreground:    var(--info-foreground);
+
+  --color-sidebar:                    var(--sidebar);
+  --color-sidebar-foreground:         var(--sidebar-foreground);
+  --color-sidebar-primary:            var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent:             var(--sidebar-accent);
+  --color-sidebar-accent-foreground:  var(--sidebar-accent-foreground);
+  --color-sidebar-border:             var(--sidebar-border);
+  --color-sidebar-ring:               var(--sidebar-ring);
+
+  --font-sans:    var(--sys-font-family-sans);
+  --font-display: var(--sys-font-family-display);
+  --font-mono:    var(--sys-font-family-mono);
+
+  --radius-sm:  calc(var(--radius) - 2px);
+  --radius-md:  var(--radius);
+  --radius-lg:  calc(var(--radius) + 2px);
+  --radius-xl:  calc(var(--radius) + 6px);
+  --radius-2xl: calc(var(--radius) + 10px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ====================================================
+   BASE STYLES
+   ==================================================== */
+@layer base {
+  /* Hide Next.js dev overlay indicator in UI */
+  [data-nextjs-toast],
+  [data-nextjs-toast-errors-parent],
+  #next-dev-overlay,
+  div[class*="nextjs-toast"] {
+    display: none !important;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: var(--sys-font-family-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--sys-font-family-display);
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  /* Interactive elements that aren't the Button primitive still need a
+     pointer. Covers raw <button>, next/link anchors, and label-for
+     controls across the whole app. */
+  button:not(:disabled),
+  a[href],
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  label[for] {
+    cursor: pointer;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    cursor: pointer;
+  }
+
+  /* Browser autofill paints its own background (Chrome's pale yellow,
+     Safari/Edge blue), overriding the field background. The inset
+     box-shadow paints our token colour on top; the long transition
+     stops the browser flashing its colour before the shadow applies. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-text-fill-color: var(--foreground);
+    -webkit-box-shadow: 0 0 0 1000px var(--background) inset;
+    box-shadow: 0 0 0 1000px var(--background) inset;
+    caret-color: var(--foreground);
+    transition: background-color 6000s ease-in-out 0s;
+  }
+}
+
+/* ====================================================
+   UTILITIES
+   ==================================================== */
+@layer utilities {
+  .text-balance  { text-wrap: balance; }
+  .text-pretty   { text-wrap: pretty; }
+
+  /* Transition smooth */
+  .transition-smooth {
+    transition: all 0.2s ease;
+  }
+
+  /* Focus ring matching brand */
+  .focus-ring {
+    @apply outline-none ring-2 ring-ring ring-offset-2;
+  }
 }
