@@ -38,6 +38,10 @@ export function isPasswordRuleMet(rule: PasswordRule, value: string): boolean {
   return rule.test(value);
 }
 
+export function isPasswordValid(value: string): boolean {
+  return PASSWORD_RULES.every((rule) => rule.test(value));
+}
+
 export const PASSWORD_RULE_MESSAGES: Record<string, string> = {
   uppercase: "Password must contain at least an uppercase letter",
   number: "Password must contain at least a number",
