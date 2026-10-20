@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Search, TrendingUp } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "cn";
 import { TRENDING_SEARCHES } from "@/lib/trending-searches";
 
 export function LandingSearch() {
@@ -29,8 +31,8 @@ export function LandingSearch() {
         <label htmlFor="landing-search" className="sr-only">
           Search products, brands and categories
         </label>
-        <div className="flex items-center gap-2 h-10 w-full pl-4 pr-1.5 rounded-full bg-muted/70 border border-transparent focus-within:border-ring transition-colors">
-          <Search className="h-4 w-4 shrink-0 text-primary self-center" aria-hidden="true" />
+        <div className="flex items-center gap-2 h-11 w-full pl-4 pr-1.5 rounded-full bg-muted/70 border border-transparent focus-within:border-ring transition-colors">
+          <Search className="h-5 w-5 shrink-0 text-primary self-center" aria-hidden="true" />
           <input
             id="landing-search"
             type="search"
@@ -40,7 +42,10 @@ export function LandingSearch() {
           />
           <button
             type="submit"
-            className="inline-flex shrink-0 items-center justify-center h-8 px-4 rounded-full bg-primary text-primary-foreground text-xs font-semibold uppercase tracking-wider transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className={cn(
+              buttonVariants({ size: "sm" }),
+              "uppercase tracking-wider"
+            )}
           >
             Search
           </button>

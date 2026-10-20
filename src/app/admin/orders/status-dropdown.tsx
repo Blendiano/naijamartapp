@@ -2,20 +2,16 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import {
+  ORDER_STATUSES,
+  orderStatusIsSuccess,
+  orderStatusLabel,
+} from "@/lib/order-status";
 
 interface AdminOrderStatusDropdownProps {
   orderId: string;
   currentStatus: string;
 }
-
-const STATUSES = [
-  "pending",
-  "confirmed",
-  "processing",
-  "shipped",
-  "delivered",
-  "cancelled",
-];
 
 export function AdminOrderStatusDropdown({
   orderId,
@@ -55,14 +51,12 @@ export function AdminOrderStatusDropdown({
       disabled={isUpdating}
       onChange={handleChange}
       className={`h-8 px-2.5 rounded-lg border border-input text-xs font-semibold uppercase bg-background transition-all focus:outline-none focus:ring-1 focus:ring-ring ${
-        status === "confirmed" || status === "delivered"
-          ? "text-success"
-          : "text-foreground"
+        orderStatusIsSuccess(status) ? "text-success" : "text-foreground"
       }`}
     >
-      {STATUSES.map((st) => (
+      {ORDER_STATUSES.map((st) => (
         <option key={st} value={st}>
-          {st}
+          {orderStatusLabel(st)}
         </option>
       ))}
     </select>

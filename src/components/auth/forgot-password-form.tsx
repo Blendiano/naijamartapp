@@ -6,9 +6,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { FieldError } from "@/components/ui/field-error";
+import { CheckCircle2 } from "lucide-react";
+import { cn } from "cn";
 import { authFormStyles } from "@/components/auth/auth-styles";
+import { IdleEscalationInit } from "./idle-escalation-init";
 
 const forgotPasswordSchema = z.object({
   email: z
@@ -73,7 +76,7 @@ export function ForgotPasswordForm() {
         </div>
         <Link
           href="/auth/login"
-          className="mt-2 w-full inline-flex items-center justify-center h-12 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/95 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-all"
+          className={cn(buttonVariants({ className: "mt-2 w-full" }))}
         >
           Return to Sign In
         </Link>
@@ -95,22 +98,11 @@ export function ForgotPasswordForm() {
           className={authFormStyles.input}
           {...register("email")}
         />
-        {errors.email?.message && (
-          <p className={authFormStyles.error} role="alert">
-            {errors.email.message}
-          </p>
-        )}
+        <FieldError message={errors.email?.message} />
       </div>
 
-      <Button type="submit" disabled={isSubmitting} className={authFormStyles.submit}>
-        {isSubmitting ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Sending
-            link...
-          </>
-        ) : (
-          "Send Reset Link"
-        )}
+      <Button type="submit" loading={isSubmitting} className={authFormStyles.submit}>
+        {isSubmitting ? "Sending link..." : "Send Reset Link"}
       </Button>
 
       <div className={authFormStyles.footer}>
@@ -119,6 +111,6 @@ export function ForgotPasswordForm() {
           Sign In
         </Link>
       </div>
-    </form>
+    <IdleEscalationInit /></form>
   );
 }

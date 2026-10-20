@@ -32,14 +32,10 @@ export const PASSWORD_RULES: readonly PasswordRule[] = [
   },
 ] as const;
 
-export const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MIN_LENGTH = 8;
 
 export function isPasswordRuleMet(rule: PasswordRule, value: string): boolean {
   return rule.test(value);
-}
-
-export function isPasswordValid(value: string): boolean {
-  return PASSWORD_RULES.every((rule) => rule.test(value));
 }
 
 export const PASSWORD_RULE_MESSAGES: Record<string, string> = {

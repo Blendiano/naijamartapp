@@ -8,6 +8,27 @@
       "when": 1790702578096,
       "tag": "0000_cheerful_human_fly",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791313586931,
+      "tag": "0001_slimy_titanium_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791318207779,
+      "tag": "0002_special_ravenous",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792443058550,
+      "tag": "0003_rate_limits",
+      "breakpoints": true
     }
   ]
 }

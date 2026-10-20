@@ -14,18 +14,12 @@ import {
 import { sql } from "drizzle-orm";
 import { users } from "./auth";
 import { products, productVariants } from "./catalogue";
+import { ORDER_STATUSES } from "@/lib/order-status";
 
 // ============================================================
 // Enums
 // ============================================================
-export const orderStatusEnum = pgEnum("order_status", [
-  "pending",
-  "confirmed",
-  "processing",
-  "shipped",
-  "delivered",
-  "cancelled",
-]);
+export const orderStatusEnum = pgEnum("order_status", [...ORDER_STATUSES]);
 
 export const paymentStatusEnum = pgEnum("payment_status", [
   "pending",

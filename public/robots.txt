@@ -1,0 +1,8 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /api/
+Disallow: /account/
+Disallow: /orders/
+Allow: /api/payments/webhook
+Allow: /api/payments/paystack/webhook
+Sitemap: https://naijamart.ng/sitemap.xml

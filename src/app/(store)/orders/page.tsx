@@ -2,8 +2,14 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getCustomerOrders } from "@/services/orders";
 import { formatNaira } from "@/lib/utils/money";
+import {
+  orderStatusIsSuccess,
+  orderStatusLabel,
+} from "@/lib/order-status";
 import Link from "next/link";
 import { EmptyState } from "@/components/shared/empty-state";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "cn";
 import { ArrowRight, Package } from "lucide-react";
 import type { Metadata } from "next";
 
@@ -51,12 +57,12 @@ export default async function OrdersPage() {
                     </span>
                     <span
                       className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
-                        ord.status === "confirmed" || ord.status === "delivered"
+                        orderStatusIsSuccess(ord.status)
                           ? "bg-success text-success-foreground"
                           : "bg-muted text-foreground"
                       }`}
                     >
-                      {ord.status}
+                      {orderStatusLabel(ord.status)}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -86,7 +92,7 @@ export default async function OrdersPage() {
           action={
             <Link
               href="/products"
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
+              className={cn(buttonVariants())}
             >
               Explore Products
             </Link>

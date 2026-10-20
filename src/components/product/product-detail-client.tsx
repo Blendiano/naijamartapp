@@ -1,20 +1,29 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
-import { Shirt, CircleX } from "lucide-react";
-import { formatNaira } from "@/lib/utils/money";
-import { Button } from "@/components/ui/button";
-import { ShoppingCart, Check, ShieldCheck, Truck } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Check, CircleX, ShieldCheck, Truck } from "lucide-react";
 import { toast } from "sonner";
 
-interface Variant {
-  id: string;
-  size: string | null;
-  color: string | null;
+import { formatNaira } from "@/lib/utils/money";
+import {
+  findVariant,
+  getInitialSelection,
+  getUniqueColors,
+  getUniqueSizes,
+  isColorAvailable,
+  isSizeAvailable,
+  isVariantInStock,
+  pickPreferredColor,
+  pickPreferredSize,
+  type ProductVariantOption,
+} from "@/lib/utils/product-variants";
+import { ProductGallery } from "@/components/product/product-gallery";
+import { ProductVariantSelector } from "@/components/product/product-variant-selector";
+import { ProductPurchaseControls } from "@/components/product/product-purchase-controls";
+
+interface Variant extends ProductVariantOption {
   sku: string | null;
   priceModifier: number;
-  quantity: number;
   totalPrice: number;
 }
 
@@ -37,258 +46,202 @@ interface ProductDetailClientProps {
 }
 
 export function ProductDetailClient({ product }: ProductDetailClientProps) {
-  const [selectedImage, setSelectedImage] = useState<string>(
-    product.images[0]?.url ?? ""
+  const variants = product.variants;
+
+  const sizes = useMemo(() => getUniqueSizes(variants), [variants]);
+  const colors = useMemo(() => getUniqueColors(variants), [variants]);
+  const initialSelection = useMemo(
+    () => getInitialSelection(variants),
+    [variants]
   );
-  const [selectedVariant, setSelectedVariant] = useState<Variant | null>(
-    product.variants[0] ?? null
+
+  const [selectedSize, setSelectedSize] = useState<string | null>(
+    initialSelection.size
+  );
+  const [selectedColor, setSelectedColor] = useState<string | null>(
+    initialSelection.color
   );
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
 
-  const currentPrice = selectedVariant
-    ? selectedVariant.totalPrice
-    : product.basePrice;
+  const selectedVariant = useMemo(
+    () => findVariant(variants, selectedSize, selectedColor),
+    [variants, selectedSize, selectedColor]
+  );
 
-  const isOutOfStock = selectedVariant
-    ? selectedVariant.quantity <= 0
-    : product.variants.length > 0 && product.variants.every((v) => v.quantity <= 0);
+  const currentPrice = selectedVariant?.totalPrice ?? product.basePrice;
+  const availableQuantity = selectedVariant?.quantity ?? 0;
+  const isOutOfStock = !isVariantInStock(selectedVariant);
 
-  // Group unique sizes and colors
-  const sizes = Array.from(
-    new Set(product.variants.map((v) => v.size).filter(Boolean))
-  ) as string[];
-  const colors = Array.from(
-    new Set(product.variants.map((v) => v.color).filter(Boolean))
-  ) as string[];
-
-  const [selectedSize, setSelectedSize] = useState<string>(sizes[0] ?? "");
-  const [selectedColor, setSelectedColor] = useState<string>(colors[0] ?? "");
-
-  function handleSizeSelect(size: string) {
+  function handleSelectSize(size: string) {
     setSelectedSize(size);
-    const match = product.variants.find(
-      (v) => v.size === size && (selectedColor ? v.color === selectedColor : true)
-    );
-    if (match) setSelectedVariant(match);
+    setQuantity(1);
+
+    // Keep a valid combination: if the current colour has no stock in the new
+    // size, move to an in-stock colour for that size.
+    const colorStillAvailable =
+      selectedColor !== null &&
+      variants.some(
+        (variant) =>
+          variant.size === size &&
+          variant.color === selectedColor &&
+          variant.quantity > 0
+      );
+
+    if (!colorStillAvailable) {
+      const nextColor = pickPreferredColor(variants, size);
+      if (nextColor !== null) setSelectedColor(nextColor);
+    }
   }
 
-  function handleColorSelect(color: string) {
+  function handleSelectColor(color: string) {
     setSelectedColor(color);
-    const match = product.variants.find(
-      (v) => (selectedSize ? v.size === selectedSize : true) && v.color === color
-    );
-    if (match) setSelectedVariant(match);
+    setQuantity(1);
+
+    const sizeStillAvailable =
+      selectedSize !== null &&
+      variants.some(
+        (variant) =>
+          variant.color === color &&
+          variant.size === selectedSize &&
+          variant.quantity > 0
+      );
+
+    if (!sizeStillAvailable) {
+      const nextSize = pickPreferredSize(variants, color);
+      if (nextSize !== null) setSelectedSize(nextSize);
+    }
   }
 
   async function handleAddToCart() {
-    if (!selectedVariant && product.variants.length > 0) {
-      toast.error("Please select a variant (size/color)");
+    if (!selectedVariant) {
+      toast.error("Please select an available size and color.");
+      return;
+    }
+
+    if (selectedVariant.quantity <= 0) {
+      toast.error("This option is currently out of stock.");
+      return;
+    }
+
+    if (quantity > selectedVariant.quantity) {
+      toast.error(
+        `Only ${selectedVariant.quantity} item(s) available in stock`
+      );
       return;
     }
 
     setIsAdding(true);
     try {
-      const variantId = selectedVariant?.id ?? product.variants[0]?.id;
       const res = await fetch("/api/cart/items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ variantId, quantity }),
+        body: JSON.stringify({ variantId: selectedVariant.id, quantity }),
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error?.message ?? "Failed to add item to cart");
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error?.message ?? "Failed to add item to cart");
       }
 
       toast.success(`Added ${product.name} to cart!`);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Error adding to cart";
-      toast.error(msg);
+      const message =
+        err instanceof Error ? err.message : "Error adding to cart";
+      toast.error(message);
     } finally {
       setIsAdding(false);
     }
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
-      {/* Gallery */}
-      <div className="lg:col-span-7 flex flex-col-reverse sm:flex-row gap-4">
-        {/* Thumbnails */}
-        {product.images.length > 1 && (
-          <div className="flex sm:flex-col gap-3 overflow-x-auto sm:overflow-y-auto max-h-[500px] pb-2 sm:pb-0">
-            {product.images.map((img) => (
-              <button
-                key={img.id}
-                onClick={() => setSelectedImage(img.url)}
-                className={`relative h-20 w-16 flex-shrink-0 overflow-hidden rounded-lg border transition-all ${
-                  selectedImage === img.url ? "border-primary" : "border-border opacity-70"
-                }`}
-                aria-label="Select image thumbnail"
-              >
-                <Image
-                  src={img.url}
-                  alt={img.altText ?? product.name}
-                  fill
-                  className="object-cover"
-                />
-              </button>
-            ))}
-          </div>
-        )}
+    <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,11fr)_minmax(0,9fr)] lg:gap-12 xl:gap-16">
+      <ProductGallery images={product.images} productName={product.name} />
 
-        {/* Main Display */}
-        <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl border border-border bg-muted flex-1">
-          {selectedImage ? (
-            <Image
-              src={selectedImage}
-              alt={product.name}
-              fill
-              priority
-              className="object-cover"
-              sizes="(max-width: 1024px) 100vw, 50vw"
-            />
-          ) : (
-            <div
-              className="absolute inset-0 flex items-center justify-center text-muted-foreground/60"
-              aria-hidden="true"
-            >
-              <Shirt className="h-16 w-16" aria-hidden="true" />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Product Details & Actions */}
-      <div className="lg:col-span-5 flex flex-col gap-6">
-        <div>
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-2">
           {product.category && (
-            <span className="text-xs font-semibold tracking-widest uppercase text-secondary">
+            <span className="text-xs font-semibold uppercase tracking-widest text-secondary">
               {product.category.name}
             </span>
           )}
-          <h1 className="text-3xl font-extrabold tracking-tight mt-1 text-foreground">
+          <h1 className="text-balance text-3xl font-extrabold leading-tight tracking-tight text-foreground sm:text-4xl">
             {product.name}
           </h1>
-          <p className="text-2xl font-bold mt-3 text-primary">
+          <p className="text-2xl font-bold tabular-nums text-primary sm:text-3xl">
             {formatNaira(currentPrice)}
           </p>
         </div>
 
-        {/* Description */}
         {product.description && (
-          <p className="text-sm leading-relaxed text-muted-foreground">
+          <p className="max-w-prose text-sm leading-relaxed text-muted-foreground sm:text-base">
             {product.description}
           </p>
         )}
 
-        {/* Variants Selection */}
-        {sizes.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
-              Size
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {sizes.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => handleSizeSelect(s)}
-                  className={`h-10 min-w-10 px-3.5 rounded-lg border text-xs font-semibold transition-all ${
-                    selectedSize === s
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-transparent text-foreground hover:border-primary/50"
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        <ProductVariantSelector
+          sizes={sizes}
+          colors={colors}
+          selectedSize={selectedSize}
+          selectedColor={selectedColor}
+          isSizeAvailable={(size) => isSizeAvailable(variants, size)}
+          isColorAvailable={(color) => isColorAvailable(variants, color)}
+          onSelectSize={handleSelectSize}
+          onSelectColor={handleSelectColor}
+        />
 
-        {colors.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
-              Color
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {colors.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => handleColorSelect(c)}
-                  className={`h-10 px-4 rounded-lg border text-xs font-semibold transition-all ${
-                    selectedColor === c
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-transparent text-foreground hover:border-primary/50"
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Stock status indicator */}
-        <div className="flex items-center gap-2 text-xs font-medium">
+        <div className="flex items-center gap-2 text-sm font-medium">
           {isOutOfStock ? (
             <span className="flex items-center gap-1.5 text-destructive">
-              <CircleX className="h-3.5 w-3.5" /> Currently Out of Stock
+              <CircleX className="h-4 w-4" aria-hidden="true" />
+              Out of stock
             </span>
           ) : (
             <span className="flex items-center gap-1.5 text-success">
-              <Check className="h-3.5 w-3.5" /> In Stock & Ready to Ship
+              <Check className="h-4 w-4" aria-hidden="true" />
+              In stock
             </span>
           )}
         </div>
 
-        {/* Quantity & Add to Cart */}
-        <div className="flex items-center gap-3 pt-2">
-          <div className="flex items-center border border-border rounded-lg h-12">
-            <button
-              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-              disabled={quantity <= 1 || isOutOfStock}
-              className="px-3.5 text-sm font-bold text-muted-foreground hover:text-foreground disabled:opacity-30"
-              aria-label="Decrease quantity"
-            >
-              -
-            </button>
-            <span className="px-3 text-sm font-semibold w-8 text-center">
-              {quantity}
-            </span>
-            <button
-              onClick={() => setQuantity((q) => q + 1)}
-              disabled={isOutOfStock}
-              className="px-3.5 text-sm font-bold text-muted-foreground hover:text-foreground disabled:opacity-30"
-              aria-label="Increase quantity"
-            >
-              +
-            </button>
-          </div>
+        <ProductPurchaseControls
+          quantity={quantity}
+          maxQuantity={availableQuantity}
+          onQuantityChange={setQuantity}
+          onAddToCart={handleAddToCart}
+          isAdding={isAdding}
+          isOutOfStock={isOutOfStock}
+        />
 
-          <Button
-            onClick={handleAddToCart}
-            disabled={isAdding || isOutOfStock}
-            className="flex-1 h-12 rounded-xl text-sm font-semibold gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            <ShoppingCart className="h-4 w-4" />
-            {isAdding
-              ? "Adding..."
-              : isOutOfStock
-              ? "Out of Stock"
-              : "Add to Cart"}
-          </Button>
-        </div>
-
-        {/* Trust Badges */}
-        <div className="mt-6 pt-6 border-t border-border grid grid-cols-2 gap-4 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <Truck className="h-4 w-4 text-primary" />
-            <span>Fast Nationwide Delivery</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-primary" />
-            <span>Paystack Secure Payment</span>
+        {/* Delivery & payment information */}
+        <div className="mt-2 border-t border-border pt-6">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Truck className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <div className="flex flex-col gap-0.5">
+                <p className="text-sm font-semibold text-foreground">
+                  Delivery
+                </p>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  Delivery options and fees are shown at checkout.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <div className="flex flex-col gap-0.5">
+                <p className="text-sm font-semibold text-foreground">
+                  Secure payment
+                </p>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  Payments are processed securely by Paystack.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

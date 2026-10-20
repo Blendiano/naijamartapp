@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { AlertTriangle, RefreshCw } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "cn";
 
 export default function RootErrorBoundary({
   error,
@@ -40,17 +42,13 @@ export default function RootErrorBoundary({
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 w-full">
-          <button
-            type="button"
-            onClick={retry}
-            className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
-          >
+          <Button type="button" onClick={retry} className="flex-1 gap-2">
             <RefreshCw className="h-4 w-4" />
             Try Again
-          </button>
+          </Button>
           <Link
             href="/"
-            className="inline-flex h-11 flex-1 items-center justify-center rounded-lg text-sm font-semibold border border-border text-foreground hover:bg-muted"
+            className={cn(buttonVariants({ variant: "outline", className: "flex-1" }))}
           >
             Back to Home
           </Link>

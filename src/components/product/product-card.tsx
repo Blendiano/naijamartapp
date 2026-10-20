@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { formatNaira } from "@/lib/utils/money";
 import { ProductImage } from "@/components/product/product-image";
+import { ProductQuickAdd } from "@/components/product/product-quick-add";
+import { WishlistButton } from "@/components/wishlist/wishlist-button";
 
 export interface ProductCardData {
   id: string;
@@ -18,20 +20,25 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const isUnavailable = product.isAvailable === false;
+  const href = `/products/${product.slug}`;
 
   return (
-    <Link
-      href={`/products/${product.slug}`}
-      className="group flex flex-col gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl"
-      aria-label={`${product.name} — ${formatNaira(product.basePrice)}`}
-    >
-      {/* Image */}
-      <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-muted">
-        <ProductImage
-          src={product.primaryImage?.url}
-          alt={product.primaryImage?.altText ?? product.name}
-          className="group-hover:scale-105"
-        />
+    <div className="group flex h-full flex-col gap-3">
+      {/* Image + Favourite */}
+      <div className="relative">
+        <Link
+          href={href}
+          tabIndex={-1}
+          aria-hidden="true"
+          className="relative block overflow-hidden rounded-xl bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <ProductImage
+            src={product.primaryImage?.url}
+            alt={product.primaryImage?.altText ?? product.name}
+            aspectRatio="aspect-[4/5]"
+            className="group-hover:scale-105"
+          />
+        </Link>
         {isUnavailable && (
           <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-black/40">
             <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-muted text-muted-foreground">
@@ -39,23 +46,41 @@ export function ProductCard({ product }: ProductCardProps) {
             </span>
           </div>
         )}
+        {!isUnavailable && (
+          <ProductQuickAdd href={href} productName={product.name} />
+        )}
+        <WishlistButton
+          className="z-30"
+          product={{
+            id: product.id,
+            slug: product.slug,
+            name: product.name,
+            basePrice: product.basePrice,
+            imageUrl: product.primaryImage?.url ?? null,
+            imageAlt: product.primaryImage?.altText ?? null,
+            categoryName: product.category?.name ?? null,
+          }}
+        />
       </div>
 
       {/* Info */}
-      <div className="flex flex-col gap-1 px-0.5">
+      <div className="flex flex-1 flex-col gap-1 px-0.5">
         {product.category && (
           <span className="text-[11px] font-medium tracking-wider uppercase text-muted-foreground">
             {product.category.name}
           </span>
         )}
-        <h3 className="text-sm font-semibold leading-snug line-clamp-2 text-foreground group-hover:underline underline-offset-2">
+        <Link
+          href={href}
+          className="text-sm font-semibold leading-snug line-clamp-2 text-foreground transition-colors group-hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+        >
           {product.name}
-        </h3>
-        <p className="text-sm font-semibold text-primary">
+        </Link>
+        <p className="mt-auto pt-0.5 text-sm font-semibold text-primary tabular-nums">
           {formatNaira(product.basePrice)}
         </p>
       </div>
-    </Link>
+    </div>
   );
 }
 

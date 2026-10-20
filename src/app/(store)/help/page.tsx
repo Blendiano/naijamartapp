@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { MessageCircle, MessagesSquare } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "cn";
 import type { Metadata } from "next";
 import { HELP_TOPICS } from "@/lib/help-topics";
 
@@ -103,7 +105,7 @@ export default function HelpPage() {
                 href={liveChatUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 h-10 px-5 rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                className={cn(buttonVariants({ className: "gap-2" }))}
               >
                 <MessageCircle className="h-4 w-4" aria-hidden="true" />
                 Start live chat
@@ -115,7 +117,7 @@ export default function HelpPage() {
                 href={`https://wa.me/${whatsappNumber}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 h-10 px-5 rounded-lg border border-border bg-surface-dim text-sm font-semibold text-foreground transition-colors hover:border-primary hover:text-primary"
+                className={cn(buttonVariants({ variant: "outline", className: "gap-2" }))}
               >
                 <MessagesSquare className="h-4 w-4" aria-hidden="true" />
                 Chat on WhatsApp

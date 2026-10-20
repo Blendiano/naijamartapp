@@ -4,7 +4,7 @@ import { useCallback, useSyncExternalStore } from "react";
 import {
   WISHLIST_EVENT,
   WISHLIST_STORAGE_KEY,
-  readWishlist,
+  parseWishlist,
   removeWishlistItem,
   toggleWishlistItem,
   type WishlistItem,
@@ -30,7 +30,7 @@ function getSnapshot(): WishlistItem[] {
 
   if (raw !== cachedRaw) {
     cachedRaw = raw;
-    cachedItems = readWishlist();
+    cachedItems = parseWishlist(raw);
   }
 
   return cachedItems;

@@ -3,3 +3,4 @@ export * from "./auth";
 export * from "./catalogue";
 export * from "./commerce";
 export * from "./orders";
+export * from "./rate-limit";

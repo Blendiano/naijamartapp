@@ -74,13 +74,13 @@ function PaymentCallbackContent() {
 
           <div className="flex flex-col w-full gap-3 mt-2">
             <Link href="/orders" className="w-full">
-              <Button className="w-full h-11 text-xs font-semibold gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+              <Button className="w-full gap-2">
                 <ShoppingBag className="h-4 w-4" />
                 View My Orders
               </Button>
             </Link>
             <Link href="/products" className="w-full">
-              <Button variant="outline" className="w-full h-11 text-xs font-semibold gap-2">
+              <Button variant="outline" className="w-full gap-2">
                 Continue Shopping
                 <ArrowRight className="h-4 w-4" />
               </Button>
@@ -99,7 +99,7 @@ function PaymentCallbackContent() {
 
           <div className="flex flex-col w-full gap-3 mt-2">
             <Link href="/checkout" className="w-full">
-              <Button className="w-full h-11 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90">
+              <Button className="w-full">
                 Return to Checkout
               </Button>
             </Link>

@@ -9,15 +9,16 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const navLinks = [
   { href: "/products", label: "Shop" },
-  { href: "/categories/men", label: "Men" },
-  { href: "/categories/women", label: "Women" },
+  { href: "/categories/mens-fashion", label: "Men" },
+  { href: "/categories/womens-fashion", label: "Women" },
 ];
 
 interface NavbarProps {
   cartCount?: number;
+  userSurname?: string;
 }
 
-export function Navbar({ cartCount = 0 }: NavbarProps) {
+export function Navbar({ cartCount = 0, userSurname }: NavbarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -62,24 +63,46 @@ export function Navbar({ cartCount = 0 }: NavbarProps) {
           {/* Actions */}
           <div className="flex items-center gap-1">
             <Link href="/search" aria-label="Search products">
-              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-auto gap-2 px-3 text-sm font-medium"
+              >
                 <Search className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden sm:inline">Search</span>
               </Button>
             </Link>
 
-            <Link href="/account" aria-label="My account">
+            <Link
+              href="/account"
+              aria-label={
+                userSurname ? `My account — ${userSurname}` : "My account"
+              }
+            >
               <Button
                 variant="outline"
                 size="icon"
-                className="h-9 w-9 rounded-md hover:border-primary/40 hover:bg-surface-container-highest hover:text-primary"
+                className="h-9 w-auto gap-2 px-3 text-sm font-medium hover:border-primary/40 hover:bg-surface-container-highest hover:text-primary"
               >
                 <User className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden sm:inline max-w-[7rem] truncate">
+                  {userSurname ?? "Account"}
+                </span>
               </Button>
             </Link>
 
-            <Link href="/cart" aria-label={`Cart — ${cartCount} items`} className="relative">
-              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
+            <Link
+              href="/cart"
+              aria-label={`Cart — ${cartCount} items`}
+              className="relative"
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-auto gap-2 px-3 text-sm font-medium"
+              >
                 <ShoppingCart className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden sm:inline">Cart</span>
               </Button>
               {cartCount > 0 && (
                 <span
@@ -102,7 +125,7 @@ export function Navbar({ cartCount = 0 }: NavbarProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 rounded-full md:hidden"
+                    className="h-9 w-9 md:hidden"
                     aria-label="Open menu"
                   >
                     <Menu className="h-4 w-4" aria-hidden="true" />

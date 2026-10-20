@@ -2,6 +2,8 @@ import { getProducts, getCategories } from "@/services/products";
 import { ProductGrid } from "@/components/product/product-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Shirt } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "cn";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -79,7 +81,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             categorySlug ? (
               <Link
                 href="/products"
-                className="inline-flex items-center px-4 py-2 rounded-full text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
+                className={cn(buttonVariants())}
               >
                 View all products
               </Link>

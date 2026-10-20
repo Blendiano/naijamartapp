@@ -421,3 +421,13 @@
     @apply outline-none ring-2 ring-ring ring-offset-2;
   }
 }
+
+/* Sonner injects its own unlayered styles at runtime with a hardcoded
+   description color that can read too faint against the toast surface.
+   Pin the toast sub-text to the on-popover token so it keeps contrast in
+   both themes (specificity outranks sonner's light/dark description rules). */
+[data-sonner-toaster] [data-sonner-toast][data-styled='true'] [data-description] {
+  color: var(--popover-foreground);
+}
+
+@import 'idle-escalation/style.css';

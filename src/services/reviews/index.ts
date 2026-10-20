@@ -1,22 +1,11 @@
 import { db } from "@/db";
 import { reviews, orders, orderItems } from "@/db/schema";
-import { eq, and, desc, inArray } from "drizzle-orm";
-
-/**
- * Get reviews for a product
- */
-export async function getProductReviews(productId: string) {
-  return db
-    .select()
-    .from(reviews)
-    .where(eq(reviews.productId, productId))
-    .orderBy(desc(reviews.createdAt));
-}
+import { eq, and, inArray } from "drizzle-orm";
 
 /**
  * Get a user's verified order ID for a product
  */
-export async function getUserVerifiedOrderForProduct(
+async function getUserVerifiedOrderForProduct(
   userId: string,
   productId: string
 ) {

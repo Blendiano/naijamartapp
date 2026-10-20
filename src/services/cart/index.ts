@@ -27,48 +27,49 @@ export interface CartItemWithDetails {
 }
 
 /**
+ * Look up an existing cart for a user, else for a guest session.
+ * Returns null when neither identity matches a cart.
+ */
+async function findCartId(
+  userId?: string,
+  sessionId?: string
+): Promise<string | null> {
+  if (userId) {
+    const [owned] = await db
+      .select({ id: carts.id })
+      .from(carts)
+      .where(eq(carts.userId, userId))
+      .limit(1);
+    return owned?.id ?? null;
+  }
+
+  if (sessionId) {
+    const [bySession] = await db
+      .select({ id: carts.id })
+      .from(carts)
+      .where(eq(carts.sessionId, sessionId))
+      .limit(1);
+    return bySession?.id ?? null;
+  }
+
+  return null;
+}
+
+/**
  * Get an existing cart or create a new one for user or guest session
  */
 export async function getOrCreateCart(
   userId?: string,
   sessionId?: string
 ): Promise<string> {
-  if (userId) {
-    const [existing] = await db
-      .select({ id: carts.id })
-      .from(carts)
-      .where(eq(carts.userId, userId))
-      .limit(1);
+  const existing = await findCartId(userId, sessionId);
+  if (existing) return existing;
 
-    if (existing) return existing.id;
+  const [created] = await db
+    .insert(carts)
+    .values(userId ? { userId } : sessionId ? { sessionId } : {})
+    .returning({ id: carts.id });
 
-    const [created] = await db
-      .insert(carts)
-      .values({ userId })
-      .returning({ id: carts.id });
-
-    return created.id;
-  }
-
-  if (sessionId) {
-    const [existing] = await db
-      .select({ id: carts.id })
-      .from(carts)
-      .where(eq(carts.sessionId, sessionId))
-      .limit(1);
-
-    if (existing) return existing.id;
-
-    const [created] = await db
-      .insert(carts)
-      .values({ sessionId })
-      .returning({ id: carts.id });
-
-    return created.id;
-  }
-
-  // Create guest cart with no session (will return new cart)
-  const [created] = await db.insert(carts).values({}).returning({ id: carts.id });
   return created.id;
 }
 
@@ -87,25 +88,8 @@ async function sumCartQuantity(cartId: string) {
 }
 
 export async function getCartCount(userId?: string, sessionId?: string) {
-  if (userId) {
-    const [existing] = await db
-      .select({ id: carts.id })
-      .from(carts)
-      .where(eq(carts.userId, userId))
-      .limit(1);
-    if (existing) return sumCartQuantity(existing.id);
-  }
-
-  if (sessionId) {
-    const [existing] = await db
-      .select({ id: carts.id })
-      .from(carts)
-      .where(eq(carts.sessionId, sessionId))
-      .limit(1);
-    if (existing) return sumCartQuantity(existing.id);
-  }
-
-  return 0;
+  const cartId = await findCartId(userId, sessionId);
+  return cartId ? sumCartQuantity(cartId) : 0;
 }
 
 /**
@@ -236,26 +220,74 @@ export async function addItemToCart(
   });
 }
 
-/**
- * Update cart item quantity
- */
-export async function updateCartItemQuantity(
-  cartItemId: string,
-  quantity: number
-) {
-  if (quantity <= 0) {
-    return db.delete(cartItems).where(eq(cartItems.id, cartItemId));
-  }
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-  return db
-    .update(cartItems)
-    .set({ quantity, updatedAt: new Date() })
-    .where(eq(cartItems.id, cartItemId));
+/**
+ * Resolve the cart a request is allowed to touch.
+ *
+ * Authenticated callers are always scoped to their own cart. Guests are scoped
+ * to the cart referenced by the `naijamart_session` cookie: the cart API writes
+ * the cart id into that cookie, while the cart pages look it up as
+ * `carts.sessionId`. Both forms are accepted so that a request can only ever
+ * reach a cart whose identifier it already holds.
+ *
+ * Returns null when the request carries no usable cart identity.
+ */
+export async function resolveCartId(
+  userId?: string,
+  sessionId?: string
+): Promise<string | null> {
+  const found = await findCartId(userId, sessionId);
+  if (found) return found;
+
+  if (userId || !sessionId) return null;
+
+  // The cart id is compared against a uuid column, so guard the format first.
+  if (!UUID_PATTERN.test(sessionId)) return null;
+
+  const [byId] = await db
+    .select({ id: carts.id })
+    .from(carts)
+    .where(eq(carts.id, sessionId))
+    .limit(1);
+  return byId?.id ?? null;
 }
 
 /**
- * Remove an item from cart
+ * Update cart item quantity, scoped to the caller's cart.
+ * Returns false when the item does not belong to that cart.
  */
-export async function removeCartItem(cartItemId: string) {
-  return db.delete(cartItems).where(eq(cartItems.id, cartItemId));
+export async function updateCartItemQuantity(
+  cartItemId: string,
+  quantity: number,
+  cartId: string
+): Promise<boolean> {
+  if (quantity <= 0) {
+    return removeCartItem(cartItemId, cartId);
+  }
+
+  const updated = await db
+    .update(cartItems)
+    .set({ quantity, updatedAt: new Date() })
+    .where(and(eq(cartItems.id, cartItemId), eq(cartItems.cartId, cartId)))
+    .returning({ id: cartItems.id });
+
+  return updated.length > 0;
+}
+
+/**
+ * Remove an item from a cart, scoped to the caller's cart.
+ * Returns false when the item does not belong to that cart.
+ */
+export async function removeCartItem(
+  cartItemId: string,
+  cartId: string
+): Promise<boolean> {
+  const deleted = await db
+    .delete(cartItems)
+    .where(and(eq(cartItems.id, cartItemId), eq(cartItems.cartId, cartId)))
+    .returning({ id: cartItems.id });
+
+  return deleted.length > 0;
 }

@@ -32,15 +32,13 @@ const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
 
-const _parsed = envSchema.safeParse(process.env);
+const parsed = envSchema.safeParse(process.env);
 
-if (!_parsed.success) {
-  const missing = _parsed.error.issues
+if (!parsed.success) {
+  const missing = parsed.error.issues
     .map((issue) => `  - ${issue.path.join(".")} : ${issue.message}`)
     .join("\n");
   throw new Error(
     `❌ Invalid environment variables:\n${missing}\n\nCheck your .env.local file.`
   );
 }
-
-export const env = _parsed.data;

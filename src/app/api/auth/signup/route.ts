@@ -4,8 +4,18 @@ import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { sendWelcomeEmail } from "@/lib/email/mailer";
+import { sendWelcomeEmail, sendVerificationEmail } from "@/lib/email/mailer";
 import { getFirstUnmetRule, PASSWORD_RULE_MESSAGES } from "@/lib/auth/password-rules";
+import { createEmailVerificationToken } from "@/lib/auth/verification-token";
+import { handleRouteError } from "@/lib/api-routes";
+import { getClientIp } from "@/lib/security/client-ip";
+import {
+  consumeRateLimit,
+  RATE_LIMIT_POLICIES,
+  RATE_LIMIT_SCOPES,
+} from "@/lib/security/rate-limit";
+import { BODY_LIMITS, readJsonBody } from "@/lib/security/body";
+import { tooManyRequests } from "@/lib/security/http";
 
 const signupSchema = z
   .object({
@@ -38,9 +48,26 @@ const signupSchema = z
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const result = signupSchema.safeParse(body);
+    const clientIp = getClientIp(req.headers);
 
+    // Account creation triggers two emails and a bcrypt hash, so it is limited
+    // per IP before any of that work happens.
+    const limit = await consumeRateLimit({
+      scope: RATE_LIMIT_SCOPES.signupIp,
+      key: clientIp,
+      policy: RATE_LIMIT_POLICIES.signupIp,
+    });
+    if (!limit.allowed) {
+      return tooManyRequests(
+        limit,
+        "Too many accounts have been created from this connection."
+      );
+    }
+
+    const body = await readJsonBody(req, BODY_LIMITS.small);
+    if (!body.ok) return body.response;
+
+    const result = signupSchema.safeParse(body.data);
     if (!result.success) {
       const issue = result.error.issues[0];
       return NextResponse.json(
@@ -52,7 +79,6 @@ export async function POST(req: Request) {
     const { name, email, password } = result.data;
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Check existing user
     const [existingUser] = await db
       .select({ id: users.id })
       .from(users)
@@ -69,7 +95,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Hash password & create user
     const passwordHash = await bcrypt.hash(password, 10);
 
     const [newUser] = await db
@@ -82,12 +107,22 @@ export async function POST(req: Request) {
       })
       .returning({ id: users.id, email: users.email, name: users.name });
 
-    // Send welcome email as a non-blocking post-creation side effect
     if (newUser) {
       void sendWelcomeEmail({
         to: newUser.email,
         name: newUser.name ?? name,
       });
+      const { token, tokenHash, expiresAt } = createEmailVerificationToken();
+      const updateResult = await db
+        .update(users)
+        .set({ emailVerificationCodeHash: tokenHash, emailVerificationExpiresAt: expiresAt, updatedAt: new Date() })
+        .where(eq(users.id, newUser.id))
+        .returning({ id: users.id });
+      if (updateResult.length > 0) {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+        const verifyLink = appUrl + "/api/auth/verify-email?token=" + token;
+        void sendVerificationEmail({ to: newUser.email, name: newUser.name ?? name, verifyLink });
+      }
     }
 
     return NextResponse.json(
@@ -99,13 +134,14 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (error: unknown) {
-    console.error("Signup error:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: { message: "An unexpected error occurred. Please try again later." },
-      },
-      { status: 500 }
+    // The first-issue validation envelope above is what signup-form.tsx
+    // renders, so only the unexpected-failure catch is routed through the
+    // shared helper (identical response, sanitised logging).
+    return handleRouteError(
+      error,
+      "[Auth] Signup error",
+      "An unexpected error occurred. Please try again later.",
+      500
     );
   }
 }

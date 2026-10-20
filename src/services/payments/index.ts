@@ -1,126 +1,109 @@
 import { db } from "@/db";
-import { orders, payments, orderItems, inventory, productVariants, notifications, carts, cartItems } from "@/db/schema";
-import { eq, sql, and } from "drizzle-orm";
-import { sendOrderConfirmationEmail } from "@/lib/email/mailer";
-import { formatNaira } from "@/lib/utils/money";
+import { payments, orders } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import { logError } from "@/lib/utils/error-log";
+
+export interface ProcessPaymentResult {
+  success: boolean;
+  alreadyProcessed?: boolean;
+  orderNumber?: string;
+  error?: string;
+}
 
 /**
- * Process a successful payment idempotently.
- * Safe to call multiple times with the same payment reference or webhook payload.
+ * Idempotently record a verified payment and confirm its order.
+ *
+ * Called by both the Paystack webhook and the payment-verification route,
+ * which can race each other for the same transaction. The transition from
+ * `pending` → `paid` is guarded inside a transaction so that only one caller
+ * performs the update; the other observes `alreadyProcessed`.
  */
 export async function processSuccessfulPayment(
   paymentReference: string,
   providerReference?: string
-) {
-  // 1. Fetch payment record
-  const [payment] = await db
-    .select()
-    .from(payments)
-    .where(eq(payments.reference, paymentReference))
-    .limit(1);
+): Promise<ProcessPaymentResult> {
+  try {
+    return await db.transaction(async (tx) => {
+      const [existingPayment] = await tx
+        .select({
+          id: payments.id,
+          orderId: payments.orderId,
+          status: payments.status,
+        })
+        .from(payments)
+        .where(eq(payments.reference, paymentReference))
+        .limit(1);
 
-  if (!payment) {
-    throw new Error(`Payment reference not found: ${paymentReference}`);
-  }
-
-  // Idempotency check: if already paid, do nothing
-  if (payment.status === "paid") {
-    console.log(`[Payment] Idempotent skip: ${paymentReference} is already paid`);
-    return { success: true, alreadyProcessed: true };
-  }
-
-  // 2. Fetch order & items
-  const [order] = await txOrDbSelectOrder(payment.orderId);
-  if (!order) {
-    throw new Error(`Order not found for payment: ${payment.orderId}`);
-  }
-
-  const items = await db
-    .select()
-    .from(orderItems)
-    .where(eq(orderItems.orderId, order.id));
-
-  // 3. Perform payment verification & inventory decrement in an atomic transaction
-  await db.transaction(async (tx) => {
-    // Re-verify payment status inside transaction with row lock
-    const [txPayment] = await tx
-      .select()
-      .from(payments)
-      .where(eq(payments.id, payment.id))
-      .limit(1);
-
-    if (txPayment.status === "paid") return;
-
-    // Update payment record
-    await tx
-      .update(payments)
-      .set({
-        status: "paid",
-        providerReference: providerReference ?? txPayment.providerReference,
-        paidAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(payments.id, payment.id));
-
-    // Update order status
-    await tx
-      .update(orders)
-      .set({
-        status: "confirmed",
-        updatedAt: new Date(),
-      })
-      .where(eq(orders.id, order.id));
-
-    // Transactional inventory decrement guarded against overselling
-    for (const item of items) {
-      if (item.variantId) {
-        await tx
-          .update(inventory)
-          .set({
-            quantity: sql`${inventory.quantity} - ${item.quantity}`,
-            updatedAt: new Date(),
-          })
-          .where(
-            and(
-              eq(inventory.variantId, item.variantId),
-              sql`${inventory.quantity} >= ${item.quantity}`
-            )
-          );
+      if (!existingPayment) {
+        return {
+          success: false,
+          error: "Payment record not found",
+        };
       }
-    }
 
-    // Create notification if order has a userId
-    if (order.userId) {
-      await tx.insert(notifications).values({
-        userId: order.userId,
-        type: "order_confirmed",
-        title: "Order Confirmed",
-        message: `Your order ${order.orderNumber} for ${formatNaira(order.total)} has been confirmed!`,
-        metadata: { orderId: order.id, orderNumber: order.orderNumber },
-      });
-    }
-  });
+      const loadOrderNumber = async () => {
+        const [order] = await tx
+          .select({ orderNumber: orders.orderNumber })
+          .from(orders)
+          .where(eq(orders.id, existingPayment.orderId))
+          .limit(1);
+        return order?.orderNumber;
+      };
 
-  // 4. Post-order side effects (Email) — fail-safe, outside transaction
-  sendOrderConfirmationEmail({
-    to: order.customerEmail,
-    customerName: order.customerName,
-    orderNumber: order.orderNumber,
-    orderTotal: formatNaira(order.total),
-    orderItems: items.map((i) => ({
-      name: i.productName,
-      quantity: i.quantity,
-      unitPrice: formatNaira(i.unitPrice),
-    })),
-    deliveryAddress: typeof order.deliveryAddress === "string" ? order.deliveryAddress : JSON.stringify(order.deliveryAddress),
-    deliveryOption: order.deliveryOptionName,
-  }).catch((err) =>
-    console.error("[Payment] Post-order email failed (non-fatal):", err)
-  );
+      if (existingPayment.status === "paid") {
+        return {
+          success: true,
+          alreadyProcessed: true,
+          orderNumber: await loadOrderNumber(),
+        };
+      }
 
-  return { success: true, alreadyProcessed: false, orderNumber: order.orderNumber };
-}
+      const now = new Date();
 
-async function txOrDbSelectOrder(orderId: string) {
-  return db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+      // Only a pending payment may transition to paid: if a concurrent
+      // delivery of the same event won the race, this update matches no rows
+      // and we report the payment as already processed.
+      const updated = await tx
+        .update(payments)
+        .set({
+          status: "paid",
+          providerReference: providerReference ?? null,
+          paidAt: now,
+          updatedAt: now,
+        })
+        .where(
+          and(eq(payments.id, existingPayment.id), eq(payments.status, "pending"))
+        )
+        .returning({ id: payments.id });
+
+      if (updated.length === 0) {
+        return {
+          success: true,
+          alreadyProcessed: true,
+          orderNumber: await loadOrderNumber(),
+        };
+      }
+
+      const [order] = await tx
+        .update(orders)
+        .set({
+          status: "confirmed",
+          updatedAt: now,
+        })
+        .where(eq(orders.id, existingPayment.orderId))
+        .returning({ orderNumber: orders.orderNumber });
+
+      return {
+        success: true,
+        alreadyProcessed: false,
+        orderNumber: order?.orderNumber,
+      };
+    });
+  } catch (error) {
+    logError("payments/processSuccessfulPayment", error);
+    return {
+      success: false,
+      error: "Payment processing failed",
+    };
+  }
 }

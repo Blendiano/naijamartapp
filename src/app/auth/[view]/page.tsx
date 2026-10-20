@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { LoginForm } from "@/components/auth/login-form";
 import { SignupForm } from "@/components/auth/signup-form";
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
+import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 import { isAuthView, type AuthView } from "@/lib/auth/views";
 
 interface AuthCopy {
@@ -14,7 +15,7 @@ interface AuthCopy {
 const AUTH_COPY: Record<AuthView, AuthCopy> = {
   login: {
     title: "Welcome back",
-    description: "Sign in to your NaijaMart account.",
+    description: "Sign in to your Account.",
   },
   signup: {
     title: "Create your Account",
@@ -22,13 +23,18 @@ const AUTH_COPY: Record<AuthView, AuthCopy> = {
   },
   "forgot-password": {
     title: "Forgot your password?",
-    description: "Enter your email and we'll help you reset your password.",
+    description:
+      "No worries. Enter your email address and we'll send you a link to reset your password.",
+  },
+  "reset-password": {
+    title: "Set a new password",
+    description: "Choose a new password for your NaijaMart account.",
   },
 };
 
 interface AuthPageProps {
   params: Promise<{ view: string }>;
-  searchParams: Promise<{ callbackUrl?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; token?: string }>;
 }
 
 export async function generateMetadata({
@@ -50,7 +56,7 @@ export async function generateMetadata({
 
 export default async function AuthPage({ params, searchParams }: AuthPageProps) {
   const { view } = await params;
-  const { callbackUrl } = await searchParams;
+  const { callbackUrl, token } = await searchParams;
 
   if (!isAuthView(view)) {
     notFound();
@@ -59,7 +65,7 @@ export default async function AuthPage({ params, searchParams }: AuthPageProps) 
   const copy = AUTH_COPY[view];
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12 bg-surface-dim">
+    <div className="min-h-dvh flex flex-col items-center justify-center px-6 py-12 bg-surface-dim">
       <div className="w-full max-w-[420px] flex flex-col gap-3">
         {/* Header Branding */}
         <div className="flex flex-col items-center gap-8">
@@ -70,11 +76,13 @@ export default async function AuthPage({ params, searchParams }: AuthPageProps) 
           >
             NaijaMart
           </Link>
-          <div className="flex flex-col gap-1 self-stretch text-center">
+          <div className="flex flex-col gap-0 self-stretch text-center">
             <h1 className="text-3xl font-bold tracking-tight text-foreground">
               {copy.title}
             </h1>
-            <p className="text-base text-muted-foreground">{copy.description}</p>
+            <p className="text-[length:var(--sys-font-size-sm)] text-muted-foreground">
+              {copy.description}
+            </p>
           </div>
         </div>
 
@@ -83,6 +91,7 @@ export default async function AuthPage({ params, searchParams }: AuthPageProps) 
           {view === "login" && <LoginForm callbackUrl={callbackUrl} />}
           {view === "signup" && <SignupForm />}
           {view === "forgot-password" && <ForgotPasswordForm />}
+          {view === "reset-password" && <ResetPasswordForm token={token ?? ""} />}
         </div>
       </div>
     </div>

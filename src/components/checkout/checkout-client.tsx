@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Image from "next/image";
@@ -71,7 +71,7 @@ export function CheckoutClient({
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutSchema),
@@ -87,7 +87,7 @@ export function CheckoutClient({
     },
   });
 
-  const selectedDeliveryId = watch("deliveryOptionId");
+  const selectedDeliveryId = useWatch({ control, name: "deliveryOptionId" });
   const selectedDelivery = deliveryOptions.find(
     (d) => d.id === selectedDeliveryId
   );
@@ -118,7 +118,7 @@ export function CheckoutClient({
       }
 
       // Redirect to Paystack checkout page
-      window.location.href = data.data.authorizationUrl;
+      window.location.assign(data.data.authorizationUrl);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Payment error";
       toast.error(msg);
@@ -353,8 +353,9 @@ export function CheckoutClient({
 
           <Button
             type="submit"
-            disabled={isSubmitting || deliveryOptions.length === 0}
-            className="w-full h-12 rounded-xl text-sm font-semibold gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+            loading={isSubmitting}
+            disabled={deliveryOptions.length === 0}
+            className="w-full gap-2"
           >
             <CreditCard className="h-4 w-4" />
             {isSubmitting

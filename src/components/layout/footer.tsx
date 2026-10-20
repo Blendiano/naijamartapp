@@ -14,8 +14,7 @@ export function Footer() {
               NaijaMart
             </span>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Nigerian Fashion, Elevated. Discover premium styles for men and
-              women, delivered with care.
+              Modern Nigerian fashion for men and women.
             </p>
           </div>
 
@@ -27,8 +26,8 @@ export function Footer() {
             <nav className="flex flex-col gap-2" aria-label="Shop navigation">
               {[
                 { href: "/products", label: "All Products" },
-                { href: "/categories/men", label: "Men" },
-                { href: "/categories/women", label: "Women" },
+                { href: "/categories/mens-fashion", label: "Men" },
+                { href: "/categories/womens-fashion", label: "Women" },
                 { href: "/search", label: "Search" },
               ].map((link) => (
                 <Link

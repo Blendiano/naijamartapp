@@ -22,13 +22,6 @@ export function nairaToKobo(naira: number): number {
 }
 
 /**
- * Convert kobo to NGN units.
- */
-export function koboToNaira(kobo: number): number {
-  return kobo / 100;
-}
-
-/**
  * Calculate order subtotal from items.
  * unitPrice and quantity are both integers; result is kobo.
  */

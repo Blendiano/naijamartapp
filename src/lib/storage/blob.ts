@@ -1,5 +1,6 @@
-import { put, del } from "@vercel/blob";
+import { put } from "@vercel/blob";
 import type { PutBlobResult } from "@vercel/blob";
+import { validateImageFile } from "@/lib/security/file-validation";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -12,7 +13,7 @@ export interface UploadResult {
 
 /**
  * Upload a product image to Vercel Blob storage.
- * Only allows image types up to 5MB.
+ * Only allows image types up to 5MB with magic-byte validation.
  */
 export async function uploadProductImage(
   file: File,
@@ -30,6 +31,11 @@ export async function uploadProductImage(
     );
   }
 
+  const validation = await validateImageFile(file);
+  if (!validation.valid) {
+    throw new Error(validation.error ?? "Invalid image file");
+  }
+
   const ext = file.type.split("/")[1];
   const filename = `products/${productSlug}/${Date.now()}.${ext}`;
 
@@ -43,11 +49,4 @@ export async function uploadProductImage(
     pathname: result.pathname,
     contentType: result.contentType,
   };
-}
-
-/**
- * Delete an image from Vercel Blob by URL.
- */
-export async function deleteProductImage(url: string): Promise<void> {
-  await del(url);
 }

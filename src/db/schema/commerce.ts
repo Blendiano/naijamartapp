@@ -6,7 +6,6 @@ import {
   boolean,
   timestamp,
   index,
-  jsonb,
 } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 import { productVariants } from "./catalogue";

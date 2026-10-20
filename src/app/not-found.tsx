@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { PackageSearch, ArrowRight } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "cn";
 
 export default function RootNotFound() {
   return (
@@ -25,14 +27,14 @@ export default function RootNotFound() {
         <div className="flex flex-col sm:flex-row gap-3 w-full">
           <Link
             href="/"
-            className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
+            className={cn(buttonVariants({ className: "flex-1 gap-2" }))}
           >
             Back to Home
             <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
             href="/products"
-            className="inline-flex h-11 flex-1 items-center justify-center rounded-lg text-sm font-semibold border border-border text-foreground hover:bg-muted"
+            className={cn(buttonVariants({ variant: "outline", className: "flex-1" }))}
           >
             Browse Products
           </Link>

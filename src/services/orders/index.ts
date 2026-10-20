@@ -1,6 +1,7 @@
 import { db } from "@/db";
-import { orders, orderItems, payments, shipments, products, orderStatusEnum } from "@/db/schema";
+import { orders, orderItems, payments, shipments, products } from "@/db/schema";
 import { eq, desc, count, sum } from "drizzle-orm";
+import type { OrderStatus } from "@/lib/order-status";
 
 /**
  * Get all orders for a specific customer
@@ -86,26 +87,15 @@ export async function getAllAdminOrders() {
 }
 
 /**
- * Admin: Update order status
+ * Admin: Update order status.
+ * Callers must validate against ORDER_STATUSES (see the shared zod enum in
+ * the admin orders route) — the type system enforces it here.
  */
-export async function updateOrderStatus(orderId: string, newStatus: string) {
-  const validStatuses = [
-    "pending",
-    "confirmed",
-    "processing",
-    "shipped",
-    "delivered",
-    "cancelled",
-  ];
-
-  if (!validStatuses.includes(newStatus)) {
-    throw new Error(`Invalid status: ${newStatus}`);
-  }
-
+export async function updateOrderStatus(orderId: string, newStatus: OrderStatus) {
   return db
     .update(orders)
     .set({
-      status: newStatus as (typeof orderStatusEnum)["enumValues"][number],
+      status: newStatus,
       updatedAt: new Date(),
     })
     .where(eq(orders.id, orderId));

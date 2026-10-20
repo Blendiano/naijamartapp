@@ -9,8 +9,13 @@ import { z } from "zod";
 import { signIn } from "next-auth/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { FieldError } from "@/components/ui/field-error";
+import { CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react";
+import { cn } from "cn";
 import { authFormStyles } from "@/components/auth/auth-styles";
+import { PasswordField } from "@/components/auth/password-field";
+import { IdleEscalationInit } from "./idle-escalation-init";
 import {
   getFirstUnmetRule,
   PASSWORD_RULE_MESSAGES,
@@ -52,14 +57,19 @@ const signupSchema = z
 
 type SignupFormValues = z.infer<typeof signupSchema>;
 
+const SUCCESS_REDIRECT_DELAY_MS = 2500;
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export function SignupForm() {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
+  const [accountCreated, setAccountCreated] = useState(false);
 
   const [passwordValue, setPasswordValue] = useState("");
   const [passwordFocused, setPasswordFocused] = useState(false);
-  const [passwordVisible, setPasswordVisible] = useState(false);
-  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
 
   const {
     register,
@@ -88,18 +98,29 @@ export function SignupForm() {
         throw new Error(data.error?.message ?? "Failed to create account");
       }
 
-      toast.success("Account created successfully!");
+      setAccountCreated(true);
 
       // Automatically sign in after creation
       const signinRes = await signIn("credentials", {
-        email: values.email,
+        email: values.email.toLowerCase().trim(),
         password: values.password,
         redirect: false,
       });
 
       if (signinRes?.error) {
+        toast.error("Something went wrong signing you in. Please sign in manually.", {
+          id: "account-created-error",
+          duration: 6000,
+        });
+        setFormError("Account created but automatic sign-in failed. Please sign in manually.");
         router.push("/auth/login");
       } else {
+        setAccountCreated(true);
+        toast.success("Account created successfully!", {
+          id: "account-created",
+          duration: 4000,
+        });
+        await wait(SUCCESS_REDIRECT_DELAY_MS);
         router.push("/store");
         router.refresh();
       }
@@ -123,11 +144,7 @@ export function SignupForm() {
           className={authFormStyles.input}
           {...register("name")}
         />
-        {errors.name?.message && (
-          <p className={authFormStyles.error} role="alert">
-            {errors.name.message}
-          </p>
-        )}
+        <FieldError message={errors.name?.message} />
       </div>
 
       <div className={authFormStyles.field}>
@@ -142,97 +159,44 @@ export function SignupForm() {
           className={authFormStyles.input}
           {...register("email")}
         />
-        {errors.email?.message && (
-          <p className={authFormStyles.error} role="alert">
-            {errors.email.message}
-          </p>
-        )}
+        <FieldError message={errors.email?.message} />
       </div>
 
-      <div className={authFormStyles.field}>
-        <label htmlFor="password" className={authFormStyles.label}>
-          Enter password
-        </label>
-        <div className={authFormStyles.inputWrap}>
-          <input
-            id="password"
-            type={passwordVisible ? "text" : "password"}
-            autoComplete="new-password"
-            placeholder="Create a strong password"
-            aria-describedby="password-requirements"
-            className={authFormStyles.inputWithToggle}
-            {...register("password", {
-              onChange: (event) => setPasswordValue(event.target.value),
-              onBlur: () => setPasswordFocused(false),
-            })}
-            onFocus={() => setPasswordFocused(true)}
-          />
-          <button
-            type="button"
-            onClick={() => setPasswordVisible((prev) => !prev)}
-            className={authFormStyles.toggle}
-            aria-label={passwordVisible ? "Hide password" : "Show password"}
-            aria-pressed={passwordVisible}
-            tabIndex={-1}
-          >
-            {passwordVisible ? (
-              <EyeOff className="h-4 w-4" aria-hidden="true" />
-            ) : (
-              <Eye className="h-4 w-4" aria-hidden="true" />
-            )}
-          </button>
-        </div>
+      <PasswordField
+        id="password"
+        label="Enter password"
+        autoComplete="new-password"
+        placeholder="Create a strong password"
+        toggleTabIndex={-1}
+        error={errors.password?.message}
+        inputProps={{
+          ...register("password", {
+            onChange: (event) => setPasswordValue(event.target.value),
+            onBlur: () => setPasswordFocused(false),
+          }),
+          onFocus: () => setPasswordFocused(true),
+          "aria-describedby": "password-requirements",
+        }}
+      >
         <div id="password-requirements">
           <PasswordRequirements
             value={passwordValue}
             focused={passwordFocused}
           />
         </div>
-        {errors.password?.message && (
-          <p className={authFormStyles.error} role="alert">
-            {errors.password.message}
-          </p>
-        )}
-      </div>
+      </PasswordField>
 
-      <div className={authFormStyles.field}>
-        <label htmlFor="confirmPassword" className={authFormStyles.label}>
-          Confirm password
-        </label>
-        <div className={authFormStyles.inputWrap}>
-          <input
-            id="confirmPassword"
-            type={confirmPasswordVisible ? "text" : "password"}
-            autoComplete="new-password"
-            placeholder="Re-enter your password"
-            className={authFormStyles.inputWithToggle}
-            {...register("confirmPassword")}
-          />
-          <button
-            type="button"
-            onClick={() => setConfirmPasswordVisible((prev) => !prev)}
-            className={authFormStyles.toggle}
-            aria-label={
-              confirmPasswordVisible
-                ? "Hide password confirmation"
-                : "Show password confirmation"
-            }
-            aria-pressed={confirmPasswordVisible}
-            tabIndex={-1}
-          >
-            {confirmPasswordVisible ? (
-              <EyeOff className="h-4 w-4" aria-hidden="true" />
-            ) : (
-              <Eye className="h-4 w-4" aria-hidden="true" />
-            )}
-          </button>
-        </div>
-        {errors.confirmPassword?.message && (
-          <p className={authFormStyles.error} role="alert">
-            {errors.confirmPassword.message}
-          </p>
-        )}
-      </div>
+      <PasswordField
+        id="confirmPassword"
+        label="Confirm password"
+        autoComplete="new-password"
+        placeholder="Re-enter your password"
+        toggleTabIndex={-1}
+        showLabel="Show password confirmation"
+        hideLabel="Hide password confirmation"
+        error={errors.confirmPassword?.message}
+        inputProps={register("confirmPassword")}
+      />
 
       {formError && (
         <p className={authFormStyles.alert} role="alert">
@@ -240,27 +204,56 @@ export function SignupForm() {
         </p>
       )}
 
+      {accountCreated && (
+        <div className="flex justify-center">
+          <Badge
+            variant="success"
+            role="status"
+            aria-live="polite"
+            data-icon="inline-start"
+          >
+            <CheckCircle2 aria-hidden="true" />
+            Account created successfully
+          </Badge>
+        </div>
+      )}
+
       <Button
         type="submit"
-        disabled={isSubmitting || !isValid}
+        loading={isSubmitting}
+        disabled={!isValid}
         className={authFormStyles.submit}
       >
-        {isSubmitting ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Creating
-            Account...
-          </>
-        ) : (
-          "Create Account"
-        )}
+        {isSubmitting ? "Creating Account..." : "Create Account"}
+        <ArrowRight
+          className="ml-1.5"
+          aria-hidden="true"
+          data-icon="inline-end"
+        />
       </Button>
 
-      <div className={authFormStyles.footer}>
+      <div
+        className={cn(
+          authFormStyles.footer,
+          "text-[length:var(--sys-font-size-xs)]",
+          "-mt-3"
+        )}
+      >
         <span>Already have an account? </span>
         <Link href="/auth/login" className={authFormStyles.footerLink}>
           Sign In
         </Link>
       </div>
-    </form>
+
+      <div className="mt-0 flex justify-center">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1 text-[length:var(--sys-font-size-xs)] font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Back home
+        </Link>
+      </div>
+    <IdleEscalationInit /></form>
   );
 }

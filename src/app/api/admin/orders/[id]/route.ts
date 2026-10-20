@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { updateOrderStatus } from "@/services/orders";
 import { z } from "zod";
+import { updateOrderStatus } from "@/services/orders";
+import { ORDER_STATUSES } from "@/lib/order-status";
+import { BODY_LIMITS, readJsonBody } from "@/lib/security/body";
+import {
+  handleRouteError,
+  parseBody,
+  requireAdmin,
+} from "@/lib/api-routes";
 
+// Derived from the shared list so the API, database enum and UI cannot drift.
 const statusSchema = z.object({
-  status: z.enum([
-    "pending",
-    "confirmed",
-    "processing",
-    "shipped",
-    "delivered",
-    "cancelled",
-  ]),
+  status: z.enum(ORDER_STATUSES),
 });
 
 export async function PATCH(
@@ -19,26 +19,16 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-
-    // Server-side admin authorization guard
-    if (!session?.user || session.user.role !== "admin") {
-      return NextResponse.json(
-        { success: false, error: { message: "Unauthorized admin operation" } },
-        { status: 403 }
-      );
-    }
+    const admin = await requireAdmin();
+    if (!admin.ok) return admin.response;
 
     const { id } = await params;
-    const body = await req.json();
-    const parsed = statusSchema.safeParse(body);
 
-    if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, error: { message: "Invalid status value" } },
-        { status: 400 }
-      );
-    }
+    const body = await readJsonBody(req, BODY_LIMITS.small);
+    if (!body.ok) return body.response;
+
+    const parsed = parseBody(statusSchema, body.data);
+    if (!parsed.ok) return parsed.response;
 
     await updateOrderStatus(id, parsed.data.status);
 
@@ -47,11 +37,11 @@ export async function PATCH(
       data: { id, status: parsed.data.status },
     });
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Failed to update order status";
-    return NextResponse.json(
-      { success: false, error: { message } },
-      { status: 400 }
+    return handleRouteError(
+      error,
+      "[Admin] Order status update error",
+      "Failed to update order status",
+      400
     );
   }
 }

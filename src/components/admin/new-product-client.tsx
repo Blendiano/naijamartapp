@@ -6,10 +6,12 @@ import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field-error";
 import { Upload, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "cn";
+import { nairaToKobo } from "@/lib/utils/money";
 
 interface CategoryOption {
   id: string;
@@ -110,7 +112,7 @@ export function NewProductClient({ categories }: NewProductClientProps) {
 
   async function handleCreate(values: ProductFormValues) {
     // Convert Naira float input to integer Kobo minor units
-    const koboBasePrice = Math.round(parseFloat(values.nairaPrice) * 100);
+    const koboBasePrice = nairaToKobo(parseFloat(values.nairaPrice));
 
     try {
       const res = await fetch("/api/admin/products", {
@@ -231,7 +233,12 @@ export function NewProductClient({ categories }: NewProductClientProps) {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold border border-border bg-muted hover:bg-muted/70">
+            <label
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "cursor-pointer"
+              )}
+            >
               <Upload className="h-3.5 w-3.5" />
               {isUploading ? "Uploading..." : "Choose Image File"}
               <input
@@ -262,7 +269,6 @@ export function NewProductClient({ categories }: NewProductClientProps) {
             variant="outline"
             size="sm"
             onClick={addVariant}
-            className="gap-1.5 text-xs"
           >
             <Plus className="h-3.5 w-3.5" /> Add Variant
           </Button>
@@ -338,8 +344,7 @@ export function NewProductClient({ categories }: NewProductClientProps) {
 
       <Button
         type="submit"
-        disabled={isSubmitting}
-        className="h-12 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
+        loading={isSubmitting}
       >
         {isSubmitting ? "Creating Product..." : "Save and Publish Product"}
       </Button>

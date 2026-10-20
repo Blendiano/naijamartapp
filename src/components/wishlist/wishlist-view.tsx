@@ -5,6 +5,8 @@ import { Heart, Trash2 } from "lucide-react";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { ProductCard, type ProductCardData } from "@/components/product/product-card";
 import { EmptyState } from "@/components/shared/empty-state";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "cn";
 
 export function WishlistView() {
   const { items, isReady, remove } = useWishlist();
@@ -26,7 +28,7 @@ export function WishlistView() {
         action={
           <Link
             href="/products"
-            className="inline-flex items-center justify-center h-10 px-6 rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+            className={cn(buttonVariants())}
           >
             Browse products
           </Link>

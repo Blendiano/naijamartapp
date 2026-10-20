@@ -3,7 +3,6 @@ import {
   uuid,
   text,
   timestamp,
-  boolean,
   primaryKey,
   integer,
 } from "drizzle-orm/pg-core";
@@ -16,6 +15,14 @@ export const users = pgTable("users", {
   emailVerified: timestamp("email_verified", { mode: "date" }),
   image: text("image"),
   passwordHash: text("password_hash"),
+  passwordResetTokenHash: text("password_reset_token_hash"),
+  passwordResetExpiresAt: timestamp("password_reset_expires_at", {
+    mode: "date",
+  }),
+  emailVerificationCodeHash: text("email_verification_code_hash"),
+  emailVerificationExpiresAt: timestamp("email_verification_expires_at", {
+    mode: "date",
+  }),
   role: text("role", { enum: ["customer", "admin"] }).notNull().default("customer"),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),

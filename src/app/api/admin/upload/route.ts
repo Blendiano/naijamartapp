@@ -1,26 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { uploadProductImage } from "@/lib/storage/blob";
+import { handleRouteError, jsonError, requireAdmin } from "@/lib/api-routes";
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-
-    if (!session?.user || session.user.role !== "admin") {
-      return NextResponse.json(
-        { success: false, error: { message: "Unauthorized upload" } },
-        { status: 403 }
-      );
-    }
+    const admin = await requireAdmin();
+    if (!admin.ok) return admin.response;
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
 
     if (!file) {
-      return NextResponse.json(
-        { success: false, error: { message: "No file uploaded" } },
-        { status: 400 }
-      );
+      return jsonError("No file uploaded", 400);
     }
 
     const result = await uploadProductImage(file, "products");
@@ -30,11 +21,11 @@ export async function POST(req: NextRequest) {
       data: { url: result.url },
     });
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Image upload failed";
-    return NextResponse.json(
-      { success: false, error: { message } },
-      { status: 500 }
+    return handleRouteError(
+      error,
+      "[Admin] Image upload error",
+      "Image upload failed",
+      500
     );
   }
 }

@@ -5,7 +5,14 @@ import { getDeliveryOptionById } from "@/services/delivery";
 import { generateOrderNumber, generatePaymentReference } from "@/lib/utils/order-number";
 import { calculateSubtotal, calculateTotal } from "@/lib/utils/money";
 
-export interface CheckoutCustomerData {
+/**
+ * Domain error whose message is plain language and safe to show to the
+ * customer. Routes may relay `CheckoutError` messages to the client; any
+ * other error must be logged server-side and replaced with a generic message.
+ */
+export class CheckoutError extends Error {}
+
+interface CheckoutCustomerData {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -13,7 +20,6 @@ export interface CheckoutCustomerData {
   line2?: string;
   city: string;
   state: string;
-  country?: string;
   deliveryOptionId: string;
   notes?: string;
 }
@@ -35,13 +41,13 @@ export async function prepareCheckoutOrder(
   const cart = await getCartWithItems(cartId);
 
   if (cart.items.length === 0) {
-    throw new Error("Your cart is empty");
+    throw new CheckoutError("Your cart is empty");
   }
 
   // Verify stock for all items
   for (const item of cart.items) {
     if (item.quantity > item.availableStock) {
-      throw new Error(
+      throw new CheckoutError(
         `Insufficient stock for "${item.productName}". Available: ${item.availableStock}`
       );
     }
@@ -50,7 +56,7 @@ export async function prepareCheckoutOrder(
   // Get delivery option and fee
   const deliveryOpt = await getDeliveryOptionById(customerData.deliveryOptionId);
   if (!deliveryOpt) {
-    throw new Error("Invalid delivery option selected");
+    throw new CheckoutError("Invalid delivery option selected");
   }
 
   // Authoritative server-side financial calculations
@@ -66,7 +72,7 @@ export async function prepareCheckoutOrder(
     line2: customerData.line2 ?? null,
     city: customerData.city,
     state: customerData.state,
-    country: customerData.country ?? "Nigeria",
+    country: "Nigeria",
   };
 
   // Perform atomic multi-record write inside a transaction

@@ -3,11 +3,13 @@
 import { useState } from "react";
 import Image, { type ImageProps } from "next/image";
 import { Shirt } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "cn";
 
 interface ProductImageProps extends Omit<ImageProps, "alt" | "src"> {
   src?: string | null;
   alt: string;
+  /** Extra classes for the outer wrapper (sizing, rounding, borders). */
+  containerClassName?: string;
   fallbackClassName?: string;
   aspectRatio?: string;
 }
@@ -16,6 +18,7 @@ export function ProductImage({
   src,
   alt,
   className,
+  containerClassName,
   fallbackClassName,
   aspectRatio = "aspect-[3/4]",
   sizes = "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw",
@@ -33,6 +36,7 @@ export function ProductImage({
         className={cn(
           "relative w-full overflow-hidden bg-gradient-to-b from-muted to-muted/80 flex flex-col items-center justify-center p-4 text-center select-none rounded-xl",
           aspectRatio,
+          containerClassName,
           fallbackClassName
         )}
         role="img"
@@ -51,7 +55,13 @@ export function ProductImage({
   }
 
   return (
-    <div className={cn("relative w-full overflow-hidden rounded-xl bg-muted", aspectRatio)}>
+    <div
+      className={cn(
+        "relative w-full overflow-hidden rounded-xl bg-muted",
+        aspectRatio,
+        containerClassName
+      )}
+    >
       {/* Loading Skeleton */}
       {!isLoaded && (
         <div className="absolute inset-0 bg-muted/80 animate-pulse z-10" aria-hidden="true" />

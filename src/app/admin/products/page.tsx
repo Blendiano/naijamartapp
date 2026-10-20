@@ -25,7 +25,7 @@ export default async function AdminProductsPage() {
         </div>
 
         <Link href="/admin/products/new">
-          <Button className="gap-2 h-11 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button className="gap-2">
             <Plus className="h-4 w-4" />
             Add New Product
           </Button>

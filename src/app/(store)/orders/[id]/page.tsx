@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { getOrderById } from "@/services/orders";
 import { notFound, redirect } from "next/navigation";
 import { formatNaira } from "@/lib/utils/money";
+import { orderStatusIsSuccess, orderStatusLabel } from "@/lib/order-status";
 import { Package, MapPin } from "lucide-react";
 import type { Metadata } from "next";
 
@@ -13,8 +14,18 @@ export async function generateMetadata({
   params,
 }: OrderDetailPageProps): Promise<Metadata> {
   const { id } = await params;
+  const session = await auth();
+  if (!session?.user) return { title: "Order" };
+
   const order = await getOrderById(id);
   if (!order) return { title: "Order Not Found" };
+
+  // Same object-level authorization as the page: never leak an order
+  // number through metadata to a customer who does not own the order.
+  if (session.user.role !== "admin" && order.userId !== session.user.id) {
+    return { title: "Order" };
+  }
+
   return { title: `Order #${order.orderNumber}` };
 }
 
@@ -61,12 +72,12 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
         <div className="flex items-center gap-3">
           <span
             className={`px-3.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider ${
-              order.status === "confirmed" || order.status === "delivered"
+              orderStatusIsSuccess(order.status)
                 ? "bg-success text-success-foreground"
                 : "bg-muted text-foreground"
             }`}
           >
-            Order: {order.status}
+            Order: {orderStatusLabel(order.status)}
           </span>
           {order.payment && (
             <span

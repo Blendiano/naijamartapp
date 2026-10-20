@@ -3,16 +3,15 @@
 import { Heart } from "lucide-react";
 import { useWishlist } from "@/hooks/use-wishlist";
 import type { WishlistItem } from "@/lib/wishlist";
-import { cn } from "@/lib/utils";
+import { cn } from "cn";
 
 interface WishlistButtonProps {
   product: WishlistItem;
   className?: string;
-  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
-export function WishlistButton({ product, className, onClick }: WishlistButtonProps) {
-  const { isWishlisted, toggle, isReady } = useWishlist();
+export function WishlistButton({ product, className }: WishlistButtonProps) {
+  const { isWishlisted, toggle } = useWishlist();
   const active = isWishlisted(product.id);
 
   return (
@@ -23,11 +22,10 @@ export function WishlistButton({ product, className, onClick }: WishlistButtonPr
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
-        onClick?.(event);
         toggle(product);
       }}
       className={cn(
-        "absolute top-3 right-3 z-10 p-2 rounded-full bg-background/80 backdrop-blur-xs text-foreground/70 hover:text-destructive hover:bg-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "absolute top-3 right-3 z-10 h-9 w-9 flex items-center justify-center rounded-full bg-background/80 backdrop-blur-xs text-foreground/70 hover:text-destructive hover:bg-background/95 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         active && "text-destructive",
         className
       )}
@@ -35,7 +33,6 @@ export function WishlistButton({ product, className, onClick }: WishlistButtonPr
       <Heart
         className={cn("h-4 w-4", active && "fill-current")}
         aria-hidden="true"
-        data-ready={isReady}
       />
     </button>
   );

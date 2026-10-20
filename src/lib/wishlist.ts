@@ -18,13 +18,15 @@ function isValidItem(value: unknown): value is WishlistItem {
   return typeof item.id === "string" && typeof item.slug === "string";
 }
 
-export function readWishlist(): WishlistItem[] {
-  if (typeof window === "undefined") return [];
+/**
+ * Parse and validate a raw localStorage string into wishlist items.
+ * Exposed so subscribers (useSyncExternalStore) can parse a raw value they
+ * already read without touching localStorage a second time.
+ */
+export function parseWishlist(raw: string | null): WishlistItem[] {
+  if (!raw) return [];
 
   try {
-    const raw = window.localStorage.getItem(WISHLIST_STORAGE_KEY);
-    if (!raw) return [];
-
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
 
@@ -34,7 +36,17 @@ export function readWishlist(): WishlistItem[] {
   }
 }
 
-export function writeWishlist(items: WishlistItem[]): void {
+export function readWishlist(): WishlistItem[] {
+  if (typeof window === "undefined") return [];
+
+  try {
+    return parseWishlist(window.localStorage.getItem(WISHLIST_STORAGE_KEY));
+  } catch {
+    return [];
+  }
+}
+
+function writeWishlist(items: WishlistItem[]): void {
   if (typeof window === "undefined") return;
 
   try {

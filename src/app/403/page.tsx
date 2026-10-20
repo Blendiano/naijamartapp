@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ShieldAlert, ArrowRight } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "cn";
 
 export const metadata: Metadata = {
   title: "403 — Access Denied",
@@ -29,16 +31,18 @@ export default function ForbiddenPage() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 w-full">
-          <Link href="/" className="flex-1">
-            <span className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90">
-              Back to Home
-              <ArrowRight className="h-4 w-4" />
-            </span>
+          <Link
+            href="/"
+            className={cn("flex-1", buttonVariants({ className: "w-full gap-2" }))}
+          >
+            Back to Home
+            <ArrowRight className="h-4 w-4" />
           </Link>
-          <Link href="/orders" className="flex-1">
-            <span className="inline-flex h-11 w-full items-center justify-center rounded-lg text-sm font-semibold border border-border text-foreground hover:bg-muted">
-              View My Orders
-            </span>
+          <Link
+            href="/orders"
+            className={cn("flex-1", buttonVariants({ variant: "outline", className: "w-full" }))}
+          >
+            View My Orders
           </Link>
         </div>
       </div>

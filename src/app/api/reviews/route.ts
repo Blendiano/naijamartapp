@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { createProductReview } from "@/services/reviews";
 import { z } from "zod";
+import { BODY_LIMITS, readJsonBody } from "@/lib/security/body";
+import { handleRouteError, parseBody } from "@/lib/api-routes";
 
 const reviewSchema = z.object({
   productId: z.string().uuid("Invalid product ID"),
@@ -20,15 +22,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = await req.json();
-    const parsed = reviewSchema.safeParse(body);
+    const body = await readJsonBody(req, BODY_LIMITS.small);
+    if (!body.ok) return body.response;
 
-    if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, error: { message: "Validation failed", details: parsed.error.format() } },
-        { status: 400 }
-      );
-    }
+    const parsed = parseBody(reviewSchema, body.data);
+    if (!parsed.ok) return parsed.response;
 
     const review = await createProductReview(
       session.user.id,
@@ -39,10 +37,13 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: review });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to submit review";
-    return NextResponse.json(
-      { success: false, error: { message } },
-      { status: 400 }
+    // Never echo error.message here: the service may throw driver errors that
+    // embed SQL and parameters, and there is no client contract on the text.
+    return handleRouteError(
+      error,
+      "[Reviews] Create review error",
+      "Failed to submit review",
+      400
     );
   }
 }

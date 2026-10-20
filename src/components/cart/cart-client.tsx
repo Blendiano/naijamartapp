@@ -4,9 +4,10 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Shirt } from "lucide-react";
-import { formatNaira } from "@/lib/utils/money";
-import { Button } from "@/components/ui/button";
+import { formatNaira, calculateSubtotal } from "@/lib/utils/money";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Trash2, ArrowRight, ShoppingBag } from "lucide-react";
+import { cn } from "cn";
 import { EmptyState } from "@/components/shared/empty-state";
 import { toast } from "sonner";
 import type { CartItemWithDetails } from "@/services/cart";
@@ -23,7 +24,7 @@ interface CartClientProps {
 export function CartClient({ initialCart }: CartClientProps) {
   const [items, setItems] = useState<CartItemWithDetails[]>(initialCart.items);
 
-  const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+  const subtotal = calculateSubtotal(items);
 
   async function updateQuantity(itemId: string, newQty: number) {
     if (newQty < 1) {
@@ -84,7 +85,7 @@ export function CartClient({ initialCart }: CartClientProps) {
         action={
           <Link
             href="/products"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
+            className={cn(buttonVariants({ className: "gap-2" }))}
           >
             Start Shopping
             <ArrowRight className="h-4 w-4" />
@@ -214,7 +215,7 @@ export function CartClient({ initialCart }: CartClientProps) {
           </div>
 
           <Link href="/checkout" className="w-full">
-            <Button className="w-full h-12 rounded-xl text-sm font-semibold gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button className="w-full gap-2">
               <ShoppingBag className="h-4 w-4" />
               Proceed to Checkout
             </Button>
