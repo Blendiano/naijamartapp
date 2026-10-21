@@ -6,7 +6,10 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { sendWelcomeEmail, sendVerificationEmail } from "@/lib/email/mailer";
 import { getFirstUnmetRule, PASSWORD_RULE_MESSAGES } from "@/lib/auth/password-rules";
-import { createEmailVerificationToken } from "@/lib/auth/verification-token";
+import {
+  getEmailVerificationTtlMinutes,
+} from "@/lib/auth/verification-token";
+import { issueEmailVerificationToken } from "@/lib/auth/verification-store";
 import { handleRouteError } from "@/lib/api-routes";
 import { getClientIp } from "@/lib/security/client-ip";
 import {
@@ -16,6 +19,8 @@ import {
 } from "@/lib/security/rate-limit";
 import { BODY_LIMITS, readJsonBody } from "@/lib/security/body";
 import { tooManyRequests } from "@/lib/security/http";
+import { buildAppUrl, resolveAppUrl } from "@/lib/utils/app-url";
+import { logError } from "@/lib/utils/error-log";
 
 const signupSchema = z
   .object({
@@ -107,21 +112,48 @@ export async function POST(req: Request) {
       })
       .returning({ id: users.id, email: users.email, name: users.name });
 
+    // The public origin is resolved from the request so that a deployment
+    // which forgot to configure NEXT_PUBLIC_APP_URL still sends links that
+    // point at the host the customer is actually using.
+    const appUrl = resolveAppUrl({
+      configuredUrl: process.env.NEXT_PUBLIC_APP_URL,
+      request: req,
+    });
+
+    let verificationEmailSent = false;
+
     if (newUser) {
-      void sendWelcomeEmail({
-        to: newUser.email,
-        name: newUser.name ?? name,
-      });
-      const { token, tokenHash, expiresAt } = createEmailVerificationToken();
-      const updateResult = await db
-        .update(users)
-        .set({ emailVerificationCodeHash: tokenHash, emailVerificationExpiresAt: expiresAt, updatedAt: new Date() })
-        .where(eq(users.id, newUser.id))
-        .returning({ id: users.id });
-      if (updateResult.length > 0) {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-        const verifyLink = appUrl + "/api/auth/verify-email?token=" + token;
-        void sendVerificationEmail({ to: newUser.email, name: newUser.name ?? name, verifyLink });
+      const { token } = await issueEmailVerificationToken(newUser.id);
+      const verifyLink = buildAppUrl(
+        appUrl,
+        `/api/auth/verify-email?token=${token}`
+      );
+
+      // Both messages are awaited rather than dispatched in the background.
+      // On a serverless platform the invocation can be frozen as soon as the
+      // response is returned, and a background send would then never reach
+      // the SMTP server.
+      const [welcome, verification] = await Promise.all([
+        sendWelcomeEmail({
+          to: newUser.email,
+          name: newUser.name ?? name,
+          appUrl,
+        }),
+        sendVerificationEmail({
+          to: newUser.email,
+          name: newUser.name ?? name,
+          verifyLink,
+          expiresInMinutes: getEmailVerificationTtlMinutes(),
+        }),
+      ]);
+
+      verificationEmailSent = verification.delivered;
+
+      if (!welcome.delivered) {
+        logError(
+          "[Email] Welcome email was not delivered during signup",
+          "The account was created, but the welcome email could not be sent."
+        );
       }
     }
 
@@ -130,6 +162,10 @@ export async function POST(req: Request) {
         success: true,
         data: newUser,
         message: "Account created successfully.",
+        // The account exists either way. When the verification email could not
+        // be delivered the customer is told so, and can request a new link
+        // from the banner shown on the next page.
+        verificationEmailSent,
       },
       { status: 201 }
     );

@@ -116,10 +116,10 @@ export function SignupForm() {
         router.push("/auth/login");
       } else {
         setAccountCreated(true);
-        toast.success("Account created successfully!", {
-          id: "account-created",
-          duration: 4000,
-        });
+        // toast.success("Account created successfully!", {
+        //   id: "account-created",
+        //   duration: 4000,
+        // });
         await wait(SUCCESS_REDIRECT_DELAY_MS);
         router.push("/store");
         router.refresh();

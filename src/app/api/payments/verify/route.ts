@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyTransaction } from "@/lib/payments/paystack";
 import { processSuccessfulPayment } from "@/services/payments";
 import { logError } from "@/lib/utils/error-log";
+import { resolveAppUrl } from "@/lib/utils/app-url";
 
 export async function GET(req: NextRequest) {
   try {
@@ -29,7 +30,8 @@ export async function GET(req: NextRequest) {
     // Record the verified payment idempotently and confirm the order.
     const result = await processSuccessfulPayment(
       reference,
-      verifiedData.reference
+      verifiedData.reference,
+      { appUrl: resolveAppUrl({ configuredUrl: process.env.NEXT_PUBLIC_APP_URL, request: req }) }
     );
 
     if (!result.success) {

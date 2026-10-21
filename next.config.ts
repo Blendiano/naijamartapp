@@ -2,6 +2,13 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  /**
+   * Next.js locks the dist directory while a dev server is running, so a
+   * second `next dev` in the same project is refused. `NEXT_DIST_DIR` lets the
+   * mail route test (`npm run test:email-routes`) start its own server with
+   * its own output directory instead of colliding with the developer's.
+   */
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   async headers() {
     const isProd = process.env.NODE_ENV === "production";
     return [

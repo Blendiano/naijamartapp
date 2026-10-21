@@ -31,6 +31,7 @@ export const RATE_LIMIT_SCOPES = {
   passwordResetAccount: "password-reset:account",
   verifyEmailIp: "verify-email:ip",
   verifyEmailAccount: "verify-email:account",
+  verifyEmailResendIp: "verify-email:resend-ip",
   contactIp: "contact:ip",
   paymentsIp: "payments:ip",
 } as const;
@@ -87,6 +88,12 @@ export const RATE_LIMIT_POLICIES = {
   /** Resend-verification requests, per IP and per account. */
   verifyEmailIp: { limit: 10, windowMs: 60 * 60 * 1000 },
   verifyEmailAccount: { limit: 5, windowMs: 60 * 60 * 1000 },
+  /**
+   * Resend-verification requests per connection. Separate from `verifyEmailIp`
+   * (which meters link clicks) so that clicking a link never eats into the
+   * budget for asking for a new one.
+   */
+  verifyEmailResendIp: { limit: 10, windowMs: 60 * 60 * 1000 },
   /** Contact form sends mail to the store inbox. */
   contactIp: { limit: 5, windowMs: 60 * 60 * 1000 },
   /**

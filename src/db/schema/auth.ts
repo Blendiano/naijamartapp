@@ -19,6 +19,12 @@ export const users = pgTable("users", {
   passwordResetExpiresAt: timestamp("password_reset_expires_at", {
     mode: "date",
   }),
+  /**
+   * Superseded by the `verification_tokens` table, which can hold several live
+   * tokens per user so that a resent link never invalidates an older one.
+   * The columns are kept so the table shape is not changed; nothing writes to
+   * them any more.
+   */
   emailVerificationCodeHash: text("email_verification_code_hash"),
   emailVerificationExpiresAt: timestamp("email_verification_expires_at", {
     mode: "date",
@@ -58,6 +64,14 @@ export const sessions = pgTable("sessions", {
   expires: timestamp("expires", { mode: "date" }).notNull(),
 });
 
+/**
+ * Verification tokens.
+ *
+ * Shared table. Auth.js stores its own verification tokens here with the
+ * email address in `identifier`; NaijaMart stores email-verification tokens
+ * with the user id in `identifier`. The two namespaces never collide, and the
+ * composite primary key allows several live tokens per identifier.
+ */
 export const verificationTokens = pgTable(
   "verification_tokens",
   {

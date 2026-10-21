@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyWebhookSignature } from "@/lib/payments/paystack";
 import { processSuccessfulPayment } from "@/services/payments";
 import { logError } from "@/lib/utils/error-log";
+import { resolveAppUrl } from "@/lib/utils/app-url";
 
 interface PaystackWebhookEvent {
   event?: string;
@@ -50,7 +51,8 @@ export async function POST(req: NextRequest) {
     if (reference) {
       const result = await processSuccessfulPayment(
         reference,
-        event.data?.id?.toString()
+        event.data?.id?.toString(),
+        { appUrl: resolveAppUrl({ configuredUrl: process.env.NEXT_PUBLIC_APP_URL, request: req }) }
       );
 
       if (!result.success) {

@@ -4,13 +4,15 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import {
-  createEmailVerificationToken,
-  hashEmailVerificationToken,
-  isEmailVerificationTokenExpired,
-} from "@/lib/auth/verification-token";
+  deleteEmailVerificationTokens,
+  findUserByEmailVerificationToken,
+  issueEmailVerificationToken,
+} from "@/lib/auth/verification-store";
+import { getEmailVerificationTtlMinutes } from "@/lib/auth/verification-token";
 import { sendVerificationEmail } from "@/lib/email/mailer";
 import { handleRouteError } from "@/lib/api-routes";
 import { logError } from "@/lib/utils/error-log";
+import { buildAppUrl, resolveAppUrl } from "@/lib/utils/app-url";
 import { getClientIp } from "@/lib/security/client-ip";
 import {
   consumeRateLimit,
@@ -19,8 +21,40 @@ import {
 } from "@/lib/security/rate-limit";
 import { tooManyRequests } from "@/lib/security/http";
 
-function getAppUrl() {
-  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+/**
+ * Email verification.
+ *
+ * `GET /api/auth/verify-email?token=…` consumes a verification link.
+ * `POST /api/auth/verify-email` sends a new one to the signed-in customer.
+ *
+ * The link is a bearer token: it carries its own validity window and works
+ * from any device, because nothing about it is tied to the browser that asked
+ * for it. Every link that has been issued stays usable until it expires, so
+ * requesting a new link never breaks the one already sitting in an inbox.
+ */
+
+/** Where the customer lands after following a verification link. */
+const RESULT_PAGE = "/verify-email";
+
+type VerificationStatus =
+  | "success"
+  | "already"
+  | "expired"
+  | "invalid"
+  | "error";
+
+function redirectToResult(
+  request: Request,
+  status: VerificationStatus
+): NextResponse {
+  const appUrl = resolveAppUrl({
+    configuredUrl: process.env.NEXT_PUBLIC_APP_URL,
+    request,
+  });
+  return NextResponse.redirect(
+    new URL(buildAppUrl(appUrl, `${RESULT_PAGE}?status=${status}`)),
+    302
+  );
 }
 
 export async function GET(req: Request) {
@@ -44,71 +78,51 @@ export async function GET(req: Request) {
     const token = url.searchParams.get("token");
 
     if (!token) {
-      return NextResponse.json(
-        { success: false, error: { message: "This verification link is no longer valid. Please request a new verification email." } },
-        { status: 400 }
-      );
+      return redirectToResult(req, "invalid");
     }
 
-    const tokenHash = hashEmailVerificationToken(token);
+    const match = await findUserByEmailVerificationToken(token);
+
+    if (!match) {
+      return redirectToResult(req, "invalid");
+    }
+
+    if (match.expired) {
+      return redirectToResult(req, "expired");
+    }
+
     const [user] = await db
-      .select({
-        id: users.id,
-        emailVerified: users.emailVerified,
-        emailVerificationCodeHash: users.emailVerificationCodeHash,
-        emailVerificationExpiresAt: users.emailVerificationExpiresAt,
-      })
+      .select({ id: users.id, emailVerified: users.emailVerified })
       .from(users)
-      .where(eq(users.emailVerificationCodeHash, tokenHash))
+      .where(eq(users.id, match.userId))
       .limit(1);
 
     if (!user) {
-      return NextResponse.json(
-        { success: false, error: { message: "This verification link is no longer valid. Please request a new verification email." } },
-        { status: 400 }
-      );
+      return redirectToResult(req, "invalid");
     }
 
     if (user.emailVerified) {
-      const appUrl = getAppUrl();
-      return NextResponse.redirect(new URL("/store?verified=already", appUrl), 302);
-    }
-
-    if (isEmailVerificationTokenExpired(user.emailVerificationExpiresAt)) {
-      await db
-        .update(users)
-        .set({
-          emailVerificationCodeHash: null,
-          emailVerificationExpiresAt: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.id, user.id));
-      return NextResponse.json(
-        { success: false, error: { message: "This verification link has expired. Request a new verification email to continue." } },
-        { status: 400 }
-      );
+      await deleteEmailVerificationTokens(user.id);
+      return redirectToResult(req, "already");
     }
 
     await db
       .update(users)
-      .set({
-        emailVerified: new Date(),
-        emailVerificationCodeHash: null,
-        emailVerificationExpiresAt: null,
-        updatedAt: new Date(),
-      })
+      .set({ emailVerified: new Date(), updatedAt: new Date() })
       .where(eq(users.id, user.id));
 
-    const appUrl = getAppUrl();
-    return NextResponse.redirect(new URL("/store?verified=success", appUrl), 302);
+    // The token is single-use: every outstanding link for this account is
+    // consumed once the address has been confirmed.
+    await deleteEmailVerificationTokens(user.id);
+
+    return redirectToResult(req, "success");
   } catch (error) {
     logError("[Auth] Verify email GET error", error);
-    const appUrl = getAppUrl();
-    return NextResponse.redirect(new URL("/store?verified=error", appUrl), 302);
+    return redirectToResult(req, "error");
   }
 }
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -122,15 +136,29 @@ export async function POST() {
     // The previous in-memory counter only applied to the single serverless
     // instance that happened to serve the request, so it could be bypassed by
     // retrying; the shared store makes the limit global.
-    const limit = await consumeRateLimit({
+    const accountLimit = await consumeRateLimit({
       scope: RATE_LIMIT_SCOPES.verifyEmailAccount,
       key: session.user.id,
       policy: RATE_LIMIT_POLICIES.verifyEmailAccount,
     });
-    if (!limit.allowed) {
+    if (!accountLimit.allowed) {
       return tooManyRequests(
-        limit,
+        accountLimit,
         "A verification email has already been sent recently."
+      );
+    }
+
+    // A second, per-IP guard keeps a single connection from using up the
+    // mail quota for many different accounts.
+    const ipLimit = await consumeRateLimit({
+      scope: RATE_LIMIT_SCOPES.verifyEmailResendIp,
+      key: getClientIp(req.headers),
+      policy: RATE_LIMIT_POLICIES.verifyEmailResendIp,
+    });
+    if (!ipLimit.allowed) {
+      return tooManyRequests(
+        ipLimit,
+        "Too many verification emails have been requested from this connection."
       );
     }
 
@@ -140,8 +168,6 @@ export async function POST() {
         email: users.email,
         name: users.name,
         emailVerified: users.emailVerified,
-        emailVerificationExpiresAt: users.emailVerificationExpiresAt,
-        emailVerificationCodeHash: users.emailVerificationCodeHash,
       })
       .from(users)
       .where(eq(users.id, session.user.id))
@@ -158,44 +184,55 @@ export async function POST() {
       return NextResponse.json({ success: true, message: "Your email is already verified." });
     }
 
-    if (isEmailVerificationTokenExpired(user.emailVerificationExpiresAt)) {
-      await db
-        .update(users)
-        .set({
-          emailVerificationCodeHash: null,
-          emailVerificationExpiresAt: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.id, user.id));
-    }
+    // A new link is issued alongside the outstanding ones rather than
+    // replacing them, so an email that is already in the customer's inbox
+    // keeps working.
+    const { token, expiresAt } = await issueEmailVerificationToken(user.id);
 
-    const { token, tokenHash, expiresAt } = createEmailVerificationToken();
-    const updateResult = await db
-      .update(users)
-      .set({
-        emailVerificationCodeHash: tokenHash,
-        emailVerificationExpiresAt: expiresAt,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, user.id))
-      .returning({ id: users.id });
+    const appUrl = resolveAppUrl({
+      configuredUrl: process.env.NEXT_PUBLIC_APP_URL,
+      request: req,
+    });
+    const verifyLink = buildAppUrl(
+      appUrl,
+      `/api/auth/verify-email?token=${token}`
+    );
 
-    if (updateResult.length === 0) {
-      return NextResponse.json(
-        { success: false, error: { message: "Failed to attach verification token" } },
-        { status: 500 }
-      );
-    }
+    const expiresInMinutes = getEmailVerificationTtlMinutes();
 
-    const appUrl = getAppUrl();
-    const verifyLink = appUrl + "/api/auth/verify-email?token=" + token;
-    void sendVerificationEmail({
+    // The message is awaited rather than dispatched in the background: on a
+    // serverless platform the invocation can be frozen the moment the response
+    // is returned, and a background send would simply never happen.
+    const result = await sendVerificationEmail({
       to: user.email,
       name: user.name ?? "there",
       verifyLink,
+      expiresInMinutes,
     });
 
-    return NextResponse.json({ success: true, message: "Verification email sent." });
+    if (!result.delivered) {
+      // Report the failure instead of claiming the email was sent. The
+      // underlying SMTP error is logged by the mailer.
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            message:
+              result.reason ??
+              "We could not send the verification email. Please try again shortly.",
+          },
+        },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Verification email sent.",
+      expiresAt: expiresAt.toISOString(),
+      expiresInMinutes,
+      retryAfter: 60,
+    });
   } catch (error) {
     return handleRouteError(
       error,

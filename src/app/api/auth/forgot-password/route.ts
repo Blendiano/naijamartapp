@@ -15,6 +15,7 @@ import {
 } from "@/lib/security/rate-limit";
 import { BODY_LIMITS, readJsonBody } from "@/lib/security/body";
 import { tooManyRequests } from "@/lib/security/http";
+import { buildAppUrl, resolveAppUrl } from "@/lib/utils/app-url";
 
 const forgotPasswordSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -97,15 +98,31 @@ export async function POST(req: Request) {
         );
       }
 
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-      const resetLink = `${appUrl}/auth/reset-password?token=${token}`;
+      const appUrl = resolveAppUrl({
+        configuredUrl: process.env.NEXT_PUBLIC_APP_URL,
+        request: req,
+      });
+      const resetLink = buildAppUrl(
+        appUrl,
+        `/auth/reset-password?token=${token}`
+      );
 
-      // Dispatch password reset email via Nodemailer
-      void sendPasswordResetEmail({
+      // Dispatch password reset email via Nodemailer. The send is awaited: on
+      // a serverless platform the invocation can be frozen as soon as the
+      // response is returned, so a background send would never reach the SMTP
+      // server.
+      const delivery = await sendPasswordResetEmail({
         to: user.email,
         name: user.name ?? "Customer",
         resetLink,
       });
+
+      if (!delivery.delivered) {
+        logError(
+          "[Auth] Password reset email was not delivered",
+          "The reset token was stored, but the email could not be sent."
+        );
+      }
     }
 
     // Always return safe generic success response to prevent email enumeration

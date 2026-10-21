@@ -20,6 +20,13 @@ const envSchema = z.object({
   SMTP_PASSWORD: z.string().min(1, "SMTP_PASSWORD is required"),
   EMAIL_FROM: z.string().email().default("noreply@naijamart.ng"),
 
+  // How long an email-verification link stays valid, in minutes.
+  EMAIL_VERIFICATION_TOKEN_TTL_MINUTES: z.coerce
+    .number()
+    .int()
+    .min(5, "Verification links must stay valid for at least 5 minutes")
+    .default(15),
+
   // Vercel Blob
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
 
@@ -27,6 +34,10 @@ const envSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
   NEXT_PUBLIC_WHATSAPP_NUMBER: z.string().optional(),
   NEXT_PUBLIC_LIVE_CHAT_URL: z.string().url().optional(),
+
+  // Abuse protection
+  TRUSTED_PROXY: z.enum(["vercel", "forwarded", "direct"]).optional(),
+  TRUSTED_PROXY_HOPS: z.coerce.number().int().positive().default(1),
 
   // Node environment
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),

@@ -64,7 +64,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await sendContactFormEmail(parsed.data);
+    const delivery = await sendContactFormEmail(parsed.data);
+
+    if (!delivery.delivered) {
+      // The message was not accepted by the mail server, so it has not been
+      // sent. Say so instead of reporting a success that never arrived.
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            message:
+              delivery.reason ??
+              "We could not send your message right now. Please try again shortly.",
+          },
+        },
+        { status: 502 }
+      );
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
